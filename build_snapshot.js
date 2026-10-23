@@ -64,6 +64,47 @@ function addEligible(p){
 function normName(n){ return (n||'').replace(/[（(][^()（）]*[)）]/g,'').trim(); }
 function dateStr(d){ d=d||new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
 
+// —— 按「坐标 + 半径」周边检索（供每日按多个起点 80km 扩库） ——
+function amapAround(kw, origin, km, page){
+  page = page || 1;
+  return new Promise((resolve)=>{
+    const q = 'https://restapi.amap.com/v3/place/around?key='+encodeURIComponent(KEY)+
+      '&location='+origin.lng+','+origin.lat+'&radius='+Math.round(km*1000)+
+      '&keywords='+encodeURIComponent(kw)+'&offset=25&page='+page+'&extensions=all';
+    const req = https.get(q, res=>{
+      let body=''; res.on('data',c=>body+=c); res.on('end',()=>{
+        try{ const j=JSON.parse(body); if(j && j.infocode==='10000' && Array.isArray(j.pois)) resolve(j.pois); else resolve([]); }
+        catch(e){ resolve([]); }
+      });
+    });
+    req.on('error',()=>resolve([]));
+    req.setTimeout(8000, ()=>{ try{ req.destroy(); }catch(e){} resolve([]); });
+  });
+}
+// 围绕某个起点、半径 km 内检索全部关键词，返回去重 + 门禁过滤后的 POI
+async function aroundSearch(origin, km){
+  km = km || MAX_KM;
+  const all=[]; const dup=new Set();
+  for(const kw of KWS){
+    for(let page=1; page<=3; page++){
+      const pois = await amapAround(kw, origin, km, page);
+      if(!pois.length) break;
+      for(const p of pois){ if(p && p.name && p.location){ const k=p.name+'|'+p.location; if(!dup.has(k)){ dup.add(k); all.push(p); } } }
+      if(pois.length<25) break;
+    }
+  }
+  return all.filter(addEligible);
+}
+// 围绕多个起点、各自半径 km 检索并合并去重
+async function aroundSearchAll(origins, km){
+  const seen=new Map(); // name|loc -> poi
+  for(const o of (origins||[])){
+    const pois = await aroundSearch(o, km);
+    for(const p of pois){ const k=(p.name||'')+'|'+(p.location||''); if(!seen.has(k)) seen.set(k, p); }
+  }
+  return [...seen.values()];
+}
+
 async function refreshPOIs(maxKm){
   maxKm = maxKm || MAX_KM;
   const all=[]; const dup=new Set();
@@ -121,4 +162,4 @@ if(require.main===module){
 }
 
 // 供 run_daily.js 复用：导出检索与门禁参数（require 时不触发生成）
-module.exports = { refreshPOIs, amapText, START, MIN_KM, MAX_KM, MIN_RATING, KWS, BLOCK_RE, ALLOW_RE, normName, addEligible };
+module.exports = { refreshPOIs, aroundSearch, aroundSearchAll, amapText, amapAround, START, MIN_KM, MAX_KM, MIN_RATING, KWS, BLOCK_RE, ALLOW_RE, UNMISTAKABLE, normName, addEligible };
