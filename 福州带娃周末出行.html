@@ -816,7 +816,9 @@ window.openGuide=function(id){
                  :('<div class="guide-sec"><b>ℹ️ 独特看点</b><div class="guide-text">该地点暂未人工收录独特看点，以下为同类场所通用建议；欢迎在现场用「备注」记下你发现的独特之处。</div></div>');
   const warn=(sn?('<b>这里特有：</b>'+sn.warn+'<br><br>'):'')+buildWarn(p,months);
   const notes=loadGuideNotes(p.id).replace(/</g,'&lt;');
+  const autoBanner=sn&&sn._auto?'<div class="callout" style="background:#fff6ea;border-left-color:var(--accent)">⚠️ 该地点攻略为「每日自动生成」（基于高德信息），尚未人工精修；如有出入请以现场为准，也欢迎告诉我补全。</div>':'';
   const html=
+    autoBanner+
     '<div class="guide-h">📄 '+p.name+' · 带娃现场简介</div>'+
     '<div class="guide-sub">'+p.sub+' ｜ 距'+start.name+'约 '+e.km+' km · 驾车约 '+e.min+' min ｜ 宝宝 '+age+'</div>'+
     '<div class="guide-sec"><b>⭐ 评分</b> '+r+'</div>'+
