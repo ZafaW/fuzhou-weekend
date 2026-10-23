@@ -234,20 +234,20 @@
       <span><i class="dot" style="background:#f2933c"></i>高德实时新发现</span>
       <span>💡 点击地图标记会弹出详情（不跳转表格）；弹窗内「📋 查看表格详情」可定位到表格行；点「🧭」或表格「🧭」可拉起高德导航</span>
     </div>
-    <div class="note" style="margin-top:8px;">说明：底图用高德瓦片（国内可达）；坐标为近似位置，已做 WGS-84→GCJ-02 偏移校正；车程按直线距离估算（市区约 2.5 min/km、远途约 1.6 min/km），实际以高德导航为准。</div>
+    <div class="note" style="margin-top:8px;">说明：坐标为近似位置；车程按直线距离估算（市区约 2.5 min/km、远途约 1.6 min/km），实际以高德导航为准。</div>
   </section>
 
   <!-- 每日热门 -->
   <section id="hotSec">
     <h2>🔥 每日热门地点</h2>
-    <div class="note" style="margin-bottom:12px;">根据天气与周末/工作日情况生成，点击卡片可在地图定位。⭐ 评分取自高德聚合数据（整合大众点评、美团等平台用户评价）；清单为高德「按相关度」检索的<b>带娃目的地推荐</b>——已过滤宠物店/动物医院/商场店铺等非目的地，普通公园/广场仅保留评分≥4.0 的优质点，同一大场所（如沙滩公园各入口）自动合并为一条；每日 8 点自动刷新，也可在上方面板手动「🔄 检索并更新清单」。</div>
+    <div class="note" style="margin-bottom:12px;">根据天气与周末/工作日情况生成，点击卡片可在地图定位。⭐ 评分来自高德聚合的真实用户评价；清单每日自动刷新，也可在上方面板手动「🔄 检索并更新清单」。</div>
     <div class="hotgrid" id="hotGrid"></div>
   </section>
 
   <!-- 推荐清单 -->
   <section>
     <h2>一、周末出行推荐清单（共 <span id="placeCount">22</span> 个）</h2>
-    <div class="note" style="margin-bottom:12px;">"距起点"随上方起点实时更新；默认按「🍼适配」排序（6 岁和 1 岁不一样，适配度按宝宝月龄算）；点「距起点 / 🍼适配」表头可切换排序；高亮行 = 当前筛选匹配；点任意行可在地图定位并弹详情。</div>
+    <div class="note" style="margin-bottom:12px;">"距起点"随上方起点实时更新；默认按「🍼适配」排序；点「距起点 / 🍼适配」表头可切换排序；高亮行 = 当前筛选匹配；点任意行可在地图定位并弹详情。</div>
     <div style="margin-bottom:10px;"><input id="tableSearch" class="tsearch" type="text" placeholder="🔍 搜索地点 / 地址 / 项目（如：沙滩、滑梯、室内、动物园）"></div>
     <table id="placeTable">
       <colgroup>
@@ -298,7 +298,7 @@
 
   <!-- 快速决策（根据当前推荐清单动态生成） -->
   <section><h2>四、按天气/状态快速决策</h2>
-    <p class="note">以下推荐随「每日高德检索生成的推荐清单」实时变化，不再写死。</p>
+    <p class="note">以下推荐随每日实时检索变化，按天气与当前清单动态生成。</p>
     <table class="quick">
       <thead><tr><th>情况</th><th>推荐去（来自当前清单）</th></tr></thead>
       <tbody id="quickBody"></tbody>
@@ -693,7 +693,7 @@ function amapJSONP(url){
   });
 }
 /* 高德「关键词文本搜索」：按相关度返回、市内全量、不按距离截断
-   → 远郊（如永泰·哇呜动物乐园）也能被搜到，这正是之前 place/around 漏掉它的根因 */
+   → 远郊（如永泰·哇呜动物乐园）也能被搜到。 */
 function amapText(kw){
   const key=getAmapKey();
   const url='https://restapi.amap.com/v3/place/text?key='+encodeURIComponent(key)+
