@@ -742,6 +742,10 @@ function addEligible(p){
 function normCore(n){
   if(!n) return '';
   let s=String(n).replace(/[（(][^()（）]*[)）]/g,'').replace(/^[A-Za-z0-9+&.\-_\s]+/,'').trim();
+  // 折叠「父场所-子点」形态：凡带「-」的，剥掉连字符及之后部分，归一到父场所
+  // （如 福州动物园-三色犬 → 福州动物园；沙滩公园-凉亭 → 沙滩公园；福山郊野公园-保福境 → 福山郊野公园）。
+  // 注意「·」不算（永泰·欧乐堡、连江·奇达村 是完整复合地名，不应被折叠）。
+  if(/^(.{2,})[－\-—](.+)$/.test(s)){ s=s.replace(/^(.{2,})[－\-—].+$/,'$1').trim(); }
   s=s.replace(/^(福州市|福建省|福州[·\-—]?|中国)/,'').trim();   // 剥「福州市/福建省/福州·/中国」等前缀，使「福州市儿童公园」并入「儿童公园」
   s=s.replace(/^(.+?)[－\-—](观景台|观景平台|瞭望台|观景塔|北门|南门|东门|西门|正门|大门|入口|出口|出入口|停车场|停车区|游客中心|游客服务中心|售票处|售票厅|服务中心|服务区|服务站|咨询台|卫生间|洗手间|公厕|驿站|美食广场|美食街|商铺|店铺|一期|二期|三期|东区|西区|南区|北区|中区|儿童乐园|游乐区|萌宠园|科普区|表演场|观景区|游览区|体验区|亲子区|戏水区|沙池)$/,'$1').trim();
   s=s.replace(/(北|南|东|西|正|主|侧|总)?(门|出入口|入口|出口|大门|停车场|停车区|停车点|游客中心|游客服务中心|售票处|售票厅|服务中心|服务区|服务站|咨询台|卫生间|洗手间|公厕|驿站|公交站|公交枢纽|地铁站|站点|候车亭|餐厅?|饭店|美食广场|美食街|商铺|店铺|一期|二期|三期|东区|西区|南区|北区|中区|\d+号|\d+区|\d+栋|\d+幢)/g,'').trim();
@@ -749,8 +753,25 @@ function normCore(n){
 }
 /* 两个名称是否指向同一大场所（互含即可，如"福州沙滩公园"⊃"沙滩公园"） */
 function samePlace(a,b){ const x=normCore(a), y=normCore(b); if(!x||!y) return false; return x===y || x.indexOf(y)>=0 || y.indexOf(x)>=0; }
-/* 同一核心名的一组 POI 里挑"最佳代表"（优先有评分，其次有地址） */
-function pickBest(g){ return g.slice().sort((a,b)=>(Number((b.biz_ext&&b.biz_ext.rating)||0))-(Number((a.biz_ext&&a.biz_ext.rating)||0)) || ((b.address?1:0)-(a.address?1:0)))[0]; }
+/* 同一核心名的一组 POI 里挑"最佳代表"（优先本体无连字符名，其次有评分，其次有地址） */
+function pickBest(g){
+  const rank=o=>{
+    // 权重1：本体（无连字符、非子点）优先，避免「福州动物园-三色犬」这类子点代表整组
+    const isMain=!/[－\-—]/.test(o.name||'');
+    // 权重2：有评分优先
+    const hasRating=Number((o.biz_ext&&o.biz_ext.rating)||0)>0?1:0;
+    // 权重3：有地址优先
+    const hasAddr=o.address?1:0;
+    return { isMain:isMain?1:0, hasRating, hasAddr, rating:Number((o.biz_ext&&o.biz_ext.rating)||0) };
+  };
+  return g.slice().sort((a,b)=>{
+    const ra=rank(a), rb=rank(b);
+    if(ra.isMain!==rb.isMain) return rb.isMain-ra.isMain;      // 本体优先
+    if(ra.hasRating!==rb.hasRating) return rb.hasRating-ra.hasRating;
+    if(ra.hasAddr!==rb.hasAddr) return rb.hasAddr-ra.hasAddr;
+    return rb.rating-ra.rating;
+  })[0];
+}
 /* 展示用清洗名：去掉英文品牌前缀（如 Wow+Park+）、括号后缀；并折叠「大场所-子设施」回大场所 */
 function cleanName(n){
   if(!n) return '';
@@ -1500,7 +1521,7 @@ function mergePOIs(pois){
   // 1) 按归一化核心名聚合同一大场所的所有子 POI（如"沙滩公园-北门/南门/停车场"合并为一条）
   const groups={};
   pois.forEach(p=>{ if(!p.name||!p.location) return; const cn=normCore(p.name); if(!cn) return; (groups[cn]=groups[cn]||[]).push(p); });
-  let reps=Object.keys(groups).map(cn=>pickBest(groups[cn]));
+  let reps=Object.keys(groups).map(cn=>{ const rep=pickBest(groups[cn]); if(rep && /[－\-—]/.test(rep.name||'')) rep={...rep, name:cn}; return rep; });
   // 2) 按评分降序，让优质推荐排前面
   reps.sort((a,b)=>(Number((b.biz_ext&&b.biz_ext.rating)||0))-(Number((a.biz_ext&&a.biz_ext.rating)||0)));
   // 3) 校准已有（种子）地点：写回真实坐标 + 评分/人均
