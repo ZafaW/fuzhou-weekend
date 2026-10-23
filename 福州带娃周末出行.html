@@ -359,7 +359,7 @@ let minKm=0, maxKm=30;   // 搜索距离区间(km)：默认 0–30；同时作�
 let knownNew=new Set();   // 已出现过的新地点核心名，避免每天重复打🌟角标
 /* 共享 Key：粘贴你自己的高德「Web 服务」Key 到下面引号内，保存文件后，任何人打开此 HTML 都能直接使用地图与实时检索，不必各自填写 */
 const EMBEDDED_AMAP_KEY='b18549a937a71f7c108e8fb72b510ee5';
-function getAmapKey(){ return (EMBEDDED_AMAP_KEY||'').trim() || (localStorage.getItem('amapKey')||'').trim(); }
+function getAmapKey(){ try{ return (EMBEDDED_AMAP_KEY||'').trim() || (localStorage.getItem('amapKey')||'').trim(); }catch(e){ return (EMBEDDED_AMAP_KEY||'').trim(); } }
 const labels={weather:{sunny:'晴天',cloudy:'多云/阴',rain:'下雨',hot:'闷热大太阳'},time:{morning:'上午',afternoon:'下午',evening:'傍晚'},baby:{fresh:'精神饱满',normal:'一般般',nap:'快到午睡'},purpose:{energy:'放电跑跳',cognitive:'认知启蒙',indoor:'避暑室内',sand:'玩沙看海',walk:'散步拍照',relax:'亲子放松'},distance:{walk:'超短距离(散步遛娃)',near:'就近(20min内)',any:'远近都行'},onlyFit:{'1':'仅看适龄(≥一般)'}};
 
 /* ===== 年龄（以出生日期为基数自动更新，仍可手动改） ===== */
@@ -1553,7 +1553,7 @@ applyAge();
 updateToday();          // 顶部日期
 document.querySelectorAll('.chips').forEach(g=>{const k=g.dataset.key; g.querySelectorAll('.chip').forEach(c=>{if(sel[k]===c.dataset.v)c.classList.add('on');});});
 document.getElementById('startInput').value=start.name;
-document.getElementById('amapKeyInput').value=(localStorage.getItem('amapKey')||'');
+try{ document.getElementById('amapKeyInput').value=(localStorage.getItem('amapKey')||''); }catch(e){}
 document.getElementById('minKmInput').value=minKm;
 document.getElementById('maxKmInput').value=maxKm;
 document.getElementById('sortInd').textContent=sortMode==='asc'?'▲':sortMode==='desc'?'▼':'';
