@@ -51,6 +51,8 @@
   .chip .cnt{font-style:normal;font-size:.72rem;margin-left:5px;background:rgba(0,0,0,.07);border-radius:8px;padding:0 6px;}
   .chip.on .cnt{background:rgba(255,255,255,.25);}
   .chip.zero{opacity:.38;}
+  .tsearch{width:100%;max-width:460px;border:1.5px solid var(--border);border-radius:10px;padding:8px 13px;font:inherit;outline:none;background:#fff;}
+  .tsearch:focus{border-color:var(--primary);}
   .clr{margin-top:7px;display:inline-block;font-size:.76rem;color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:2px 9px;cursor:pointer;background:#fff;}
   .clr:hover{border-color:var(--accent);color:var(--accent);}
   .result{margin-top:16px;padding:12px 16px;border-radius:10px;font-size:.92rem;background:var(--primary-light);border-left:4px solid var(--primary);display:none;}
@@ -246,6 +248,7 @@
   <section>
     <h2>一、周末出行推荐清单（共 <span id="placeCount">22</span> 个）</h2>
     <div class="note" style="margin-bottom:12px;">"距起点"随上方起点实时更新；默认按「🍼适配」排序（6 岁和 1 岁不一样，适配度按宝宝月龄算）；点「距起点 / 🍼适配」表头可切换排序；高亮行 = 当前筛选匹配；点任意行可在地图定位并弹详情。</div>
+    <div style="margin-bottom:10px;"><input id="tableSearch" class="tsearch" type="text" placeholder="🔍 搜索地点 / 地址 / 项目（如：沙滩、滑梯、室内、动物园）"></div>
     <table id="placeTable">
       <colgroup>
         <col style="width:3%"><col style="width:15%"><col style="width:9%"><col style="width:11.5%"><col style="width:21%"><col style="width:14%"><col style="width:7.5%"><col style="width:7%"><col style="width:12%">
@@ -362,6 +365,7 @@ const SEED_PLACES = [
 let PLACES = SEED_PLACES.map(p=>({...p}));
 
 const sel={weather:null,time:null,baby:null,purpose:null,distance:null,onlyFit:null};
+let searchQ='';   // 清单关键词搜索（独立于智能筛选，可叠加）
 let start={lat:26.0766,lng:119.2397,name:"福建农林大学"};
 let savedStarts=[];
 let sortMode='fit', pickMode=false;   // 默认按🍼适龄适配度降序排序
@@ -579,17 +583,23 @@ function apply(){
   let count=0,firstMatch='';
   PLACES.forEach(p=>{
     const tr=body.querySelector(`tr[data-id="${p.id}"]`);
-    const ok=matches(p,tr,null);
+    let ok=matches(p,tr,null);
+    if(ok&&searchQ){
+      const hay=(p.name+' '+(p.sub||'')+' '+(p.play||'')+' '+(p.sell||'')+' '+(p.food||'')+' '+(p.address||'')).toLowerCase();
+      if(!hay.includes(searchQ)) ok=false;
+    }
     tr.style.display=ok?'':'none'; tr.classList.toggle('match',ok);
     if(ok){count++; if(!firstMatch)firstMatch=p.name;}
   });
   const box=document.getElementById('result');
   const active=Object.entries(sel).filter(([k,v])=>v);
-  if(active.length===0){box.classList.remove('show');}
+  if(active.length===0&&!searchQ){box.classList.remove('show');}
   else{
-    const cond=active.map(([k,v])=>labels[k][v]).join(' + ');
+    const cond=active.length?active.map(([k,v])=>labels[k][v]).join(' + '):'搜索「'+searchQ+'」';
     let tip;
     if(count===0){
+      if(!active.length&&searchQ){tip=`没有匹配 <b>「${searchQ}」</b> 的地点。试试更短的关键词（如「沙」「滑」「室内」），或清空搜索框。`;}
+      else{
       // 智能放宽：逐项试去掉哪个条件就能出结果，给出最优建议
       let relaxKey=null,relaxN=0;
       for(const [k] of active){
@@ -598,6 +608,7 @@ function apply(){
       }
       if(relaxKey){tip=`当前组合（${cond}）没有匹配地点。建议放宽 <b>「${labels[relaxKey][sel[relaxKey]]}」</b>——放宽后可匹配 <b>${relaxN}</b> 个地点。 <button class="navbtn" onclick="relaxFilter('${relaxKey}')">🔧 一键放宽</button>`;}
       else{tip=`当前组合（${cond}）没有匹配地点，单项放宽也出不来——多半是「搜索距离区间」太窄，可扩大区间或重置全部筛选。`;}
+      }
     }
     else{const far=PLACES.filter(p=>{const tr=body.querySelector(`tr[data-id="${p.id}"]`);return tr.style.display!=='none'&&tr.dataset.d==='far';}).length;tip=`根据 <b>${cond}</b>，共匹配 <b>${count}</b> 个地点（已高亮）。${far>0?'其中含周边远途 '+far+' 个；':''}首选推荐：<b>${firstMatch}</b>。`;}
     box.innerHTML='🔎 '+tip; box.classList.add('show');
@@ -800,7 +811,10 @@ window.openGuide=function(id){
   // 适龄 & 区域建议：说明这个月龄合不合适、以及园区里哪块更适合孩子（子设施不单列，适龄提示放这里）
   const fitTxt='适龄适配度 <b class="fit-'+(p.fit>=80?'great':p.fit>=60?'ok':p.fit>=40?'mid':p.fit>=20?'low':'no')+'">'+(p.fit==null?0:p.fit)+'</b> '+(p.fitLabel||'')+(p.fitReason?('：'+p.fitReason):'');
   const areaTxt=CAT_TIP[cat]||'结合宝宝状态灵活安排，注意防晒与补水。';
-  const warn=buildWarn(p,months);
+  const sn=spotNote(p.name);
+  const uniqSec=sn?('<div class="guide-sec"><b>🌟 此处的独特看点</b><div class="guide-text">'+sn.u+'</div></div><div class="guide-sec"><b>⚠️ 这里的雷点</b><div class="guide-text">'+sn.warn+'</div></div>')
+                 :('<div class="guide-sec"><b>ℹ️ 独特看点</b><div class="guide-text">该地点暂未人工收录独特看点，以下为同类场所通用建议；欢迎在现场用「备注」记下你发现的独特之处。</div></div>');
+  const warn=(sn?('<b>这里特有：</b>'+sn.warn+'<br><br>'):'')+buildWarn(p,months);
   const notes=loadGuideNotes(p.id).replace(/</g,'&lt;');
   const html=
     '<div class="guide-h">📄 '+p.name+' · 带娃现场简介</div>'+
@@ -808,6 +822,7 @@ window.openGuide=function(id){
     '<div class="guide-sec"><b>⭐ 评分</b> '+r+'</div>'+
     '<div class="guide-sec"><b>✨ 卖点</b> '+p.sell+'</div>'+
     '<div class="guide-sec"><b>🎯 可玩项目 & 怎么玩</b><ul class="guide-list">'+playList+'</ul></div>'+
+    uniqSec+
     '<div class="guide-sec"><b>👶 适龄 & 区域建议</b><div class="guide-text">'+fitTxt+'<br><br>'+areaTxt+'</div></div>'+
     '<div class="guide-sec"><b>🍽️ 吃饭 / 野餐</b> '+p.food+'</div>'+
     '<div class="guide-sec"><b>⚠️ 注意事项</b><div class="guide-text">'+warn+'</div></div>'+
@@ -821,6 +836,36 @@ window.openGuide=function(id){
 };
 window.closeGuide=function(){document.getElementById('guideModal').classList.remove('show');};
 document.getElementById('guideModal').addEventListener('click',e=>{if(e.target.id==='guideModal')closeGuide();});
+/* ===== 人工整理的「独特看点 / 雷点」库（按地点核心名匹配） =====
+   u=独特亮点（区别于其他公园的独有要素）；warn=本点雷点；food=特有吃饭建议（可省略）。
+   出行前请以现场与最新点评为准；无条目的地还是会给出通用建议。 */
+const SPOT_NOTES={
+ '西湖公园':{u:'福州保存最完整的古典园林：柳堤—开化屿—飞虹桥环湖线是招牌；园内还有福建博物院（顺路可看）；湖中黑天鹅、成群锦鲤对宝宝吸引力大',warn:'周末人流大；湖岸石驳岸无护栏段多，水边务必牵手；石板路+部分桥有台阶，推车颠',food:'园内餐饮点少，建议自带野餐垫；南门外湖滨路餐饮密集'},
+ '左海公园':{u:'园内有「左海海底世界」（可单独购票联动玩）；北大门一带有儿童游乐设施区；环湖栈道平缓好推车',warn:'游乐设施多为收费且偏大龄，1 岁多可玩的有限；周末人多',food:'北门铜盘路方向餐饮多；园内小店零星'},
+ '闽江公园':{u:'沿江带状公园，江景开阔江风舒服；北园有沙滩区和大草坪，看船看桥对宝宝很新鲜',warn:'江岸个别段护栏低/有缺口，务必盯紧；园子狭长树荫少，正午暴晒要备遮阳',food:'园内基本无餐厅；江滨大道对面临街餐饮/商场可解决'},
+ '沙滩公园':{u:'乌龙江畔人工沙滩，市区最方便的挖沙地：沙质细、有椰树景观带与大草坪，傍晚江景好看',warn:'夏天沙面烫脚，选早晚去；江水不可下水游泳；周末停车紧张',food:'园内售卖点少，自带饮水零食；周边餐饮少，可去金山/上渡商圈'},
+ '乌塔公园':{u:'五代石塔「崇妙保圣坚牢塔」（乌塔）就在眼前，塔身佛像浮雕可指给宝宝认；紧邻乌山景区与三坊七巷，可串成一条线',warn:'园区小，石板地+台阶多，推车不便；游乐设施几乎没有，更像短停打卡点',food:'直接接乌山/三坊七巷商圈，吃饭选择很多'},
+ '黎明湖公园':{u:'乌山脚下的湖景小公园，绕湖木栈道平缓推车友好，有睡莲、亭桥与大草坪，人少清净适合慢逛',warn:'树荫一般；周边路窄停车难，建议打车或地铁',food:'园内无餐厅；临近乌山西路与万象城商圈可觅食'},
+ '金牛山公园':{u:'大草坪+水景舞台，周末常有市民活动；紧邻「福道」金牛山入口，可顺路体验森林栈道',warn:'草坪暴晒时段无遮挡；活动日人多嘈杂',food:'梅峰路/杨桥西路沿线餐饮多'},
+ '福道':{u:'城市森林步道（金牛山—左海一线），钢架栈道悬在林梢上，步行感很特别；部分入口有电梯/缓坡，推车可上',warn:'全程很长，带娃走一段体验即可；镂空格栅面宝宝可能怕高，推行注意轮子卡缝',food:'入口多在居民区，就近餐饮方便'},
+ '花海公园':{u:'南江滨季节性花田（向日葵/波斯菊等按季轮种）+超大江滨草坪，拍照出片',warn:'花有花期，非花季就是普通草坪；基本无树荫，全天防晒',food:'园内无餐厅；对岸鳌峰路一带餐饮少，建议自备'},
+ '烟台山公园':{u:'百年老洋房街区+山丘步道，石厝教堂、老领事馆建筑群有味道，适合拍照',warn:'台阶与坡道多，推车辛苦建议用背带；街区人流大',food:'爱国路/亭下路咖啡简餐多，亲子友好度一般'},
+ '福州国家森林公园':{u:'福州「绿肺」，千年古榕与竹林步道是招牌，八一水库边大草坪野餐绝佳',warn:'园区很大步行量大，建议电瓶车代步+核心区小环线；周末车流大',food:'园门口有农家菜；园内售卖点少，建议自带'},
+ '金鸡山公园':{u:'城市山体公园，揽城栈道可俯瞰全城，夜景视角独特；南门有电梯直上',warn:'山上步道有起伏，推车选平缓段；服务点少',food:'园内服务点少；南门外六一北路商圈吃饭方便'},
+ '温泉公园':{u:'欧式修剪园林+音乐喷泉广场，草坪开阔好推车，市中心难得的平坦大草坪',warn:'喷泉有场次，错过就没得看；树荫集中在园缘',food:'温泉公园路与五四路餐饮密集'},
+ '飞凤山奥体公园':{u:'奥体旁山体公园，环山步道+大草坪，山顶可看奥体场馆全景',warn:'上山段有坡度，推车选外环平缓线',food:'奥体周边商圈餐饮多'},
+ '江心公园':{u:'闽江中的小岛公园，四面环江景色独特，樟树林阴凉密度高',warn:'一条桥进出；岛不大可玩时间有限；水边注意看护',food:'岛上基本没有，出岛后上渡路一带有餐饮'},
+ '闽江公园南园':{u:'比北园更野趣、湿地感强，适合看水鸟和芦苇荡',warn:'设施与遮阴都更少，纯户外注意防晒补水',food:'园内无餐厅，同闽江公园自备或过江滨大道'},
+};
+function spotNote(name){
+  try{
+    const s=String(name||'').replace(/[（(][^()（）]*[)）]/g,'').replace(/^(福州市|福建省|中国)/,'').trim();
+    if(SPOT_NOTES[s]) return SPOT_NOTES[s];
+    const keys=Object.keys(SPOT_NOTES).sort((a,b)=>b.length-a.length);
+    for(const k of keys){ if(s.indexOf(k)>=0) return SPOT_NOTES[k]; }
+  }catch(e){}
+  return null;
+}
 /* 按 POI 类型归类，给出"有实质内容"的游玩/卖点/吃饭建议（不再用占位空话） */
 const CAT_RULES=[ // [正则, 类别]
   [/海洋|水族/, 'aquarium'],
@@ -1274,6 +1319,10 @@ function buildStrategy(p){
   const S=getPlaceStrat(p)||deriveStrat(p);
   const fullDay=/(天|1 天|全天)/.test(p.time||'');
   const isCached=!!loadStrategy(p.id);
+  const sn=spotNote(p.name);
+  const uniqSec=sn?('<div class="guide-sec"><b>🌟 此处的独特看点</b><div class="guide-text">'+sn.u+'</div></div><div class="guide-sec"><b>⚠️ 这里的雷点</b><div class="guide-text">'+sn.warn+'</div></div>')
+                 :('<div class="guide-sec"><b>ℹ️ 独特看点</b><div class="guide-text">该地点暂未人工收录独特看点，以下为同类场所通用玩法；欢迎在现场用「备注」记下你发现的独特之处，会自动存进这份攻略。</div></div>');
+  const warnAll=(sn?('<b>这里特有：</b>'+sn.warn+'<br><br>'):'')+buildWarn(p,months);
   const scenesHtml=stratScenesHtml(S.scenes);
   const fitTxt='适龄适配度 <b class="fit-'+(p.fit>=80?'great':p.fit>=60?'ok':p.fit>=40?'mid':p.fit>=20?'low':'no')+'">'+(p.fit==null?0:p.fit)+'</b> '+(p.fitLabel||'')+(p.fitReason?('：'+p.fitReason):'');
   const mapSec=S.mapNote?('<div class="guide-sec"><b>🗺️ 园区地图 / 分区</b><div class="guide-text">'+S.mapNote+'</div></div>'):'';
@@ -1285,12 +1334,13 @@ function buildStrategy(p){
     '<div class="guide-sec"><b>⭐ 评分</b> '+r+(p.address?(' ｜ '+p.address):'')+'</div>'+
     '<div class="guide-sec"><b>👶 适龄总评</b><div class="guide-text">'+fitTxt+'<br><br>'+ageStageNote(months)+'</div></div>'+
     '<div class="guide-sec"><b>📖 场景总览</b><div class="guide-text">'+S.intro+'</div></div>'+
+    uniqSec+
     '<div class="guide-sec"><b>🎬 具体游玩场景</b>'+scenesHtml+'</div>'+
     mapSec+showSec+
     '<div class="guide-sec"><b>🗓️ 推荐路线（'+(fullDay?'全天':'半天')+'）</b><div class="strat-timeline">'+ (fullDay?S.full:S.half) +'</div></div>'+
     bz+
     '<div class="guide-sec"><b>🍽️ 吃饭 / 野餐</b> '+p.food+'</div>'+
-    '<div class="guide-sec"><b>⚠️ 注意事项</b><div class="guide-text">'+buildWarn(p,months)+'</div></div>'+
+    '<div class="guide-sec"><b>⚠️ 注意事项</b><div class="guide-text">'+warnAll+'</div></div>'+
     '<div class="guide-sec"><b>📝 现场任务 / 备注</b><div class="guide-text" style="background:#fff;border:1px solid var(--border)"><textarea id="guideNotes" style="width:100%;min-height:70px;border:none;outline:none;font:inherit;resize:vertical" placeholder="在现场随时补充：要玩的、要带的、要注意的…（自动存本机）">'+notes+'</textarea></div><div class="guide-note-row"><span id="guideNoteTip" class="note"></span><button class="navbtn" onclick="saveGuideNotes('+p.id+')">💾 保存备注</button></div></div>'+
     '<div class="guide-btns"><button class="navbtn" onclick="amapNav('+p.id+')">🧭 高德导航</button>'+
     '<button class="navbtn" onclick="openReview('+p.id+')">🔗 查评分</button>'+
@@ -1318,13 +1368,21 @@ function inferFromPOI(p,w,id){
   const sub=(p.adname||'')+(p.address?' · '+p.address:'');
   const k=catOf(combo), c=CAT[k];
   const play=c.play;                                   // 按类型给真实游玩项目，而非"散步、亲子放松"
-  let sell=c.sell;                                     // 按类型给真实卖点
+  const sn=spotNote(name);
+  let sell, food;
+  if(sn){
+    sell='🌟独特：'+sn.u+'；共同优点：'+c.sell;
+    food=sn.food||c.food;
+  }else{
+    sell=c.sell+'（该地点暂未人工收录独特看点，此为同类场所通用优点）';
+    food=c.food;
+  }
   if(re.rating){ sell+='；高德评分 ★'+re.rating; if(re.cost) sell+=' / 人均¥'+re.cost; }
   else { sell+='（评分暂未收录，点「查评分」看真实点评）'; }
   sell+='，出发前请确认开放时间与票价';               // 不臆造"免费"等不实信息
-  const food=c.food;                                   // 按类型给真实吃饭/野餐建议
   const time=/海洋|水族|动物园/.test(combo)?'半天':(/馆/.test(combo)?'2h':'半天');
   return {id,name,isNew:true,sub,lat:w.lat,lng:w.lng,w:wW.trim(),t:tT,indoor,shade,purpose,play,sell,time,food,
+    uniq:sn?sn.u:'',warnU:sn?sn.warn:'',
     rating:re.rating||undefined, cost:re.cost||undefined, business:re.business||undefined};
 }
 /* 合并：归一化同名聚合 → 校准种子 → 仅收真正带娃目的地（去重后追加） */
@@ -1546,7 +1604,12 @@ document.querySelectorAll('.clr').forEach(b=>b.addEventListener('click',()=>{
 document.getElementById('resetBtn').addEventListener('click',()=>{
   Object.keys(sel).forEach(k=>sel[k]=null);
   document.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+  searchQ=''; const ts=document.getElementById('tableSearch'); if(ts)ts.value='';
   apply(); saveState();
+});
+document.getElementById('tableSearch').addEventListener('input',e=>{
+  searchQ=e.target.value.trim().toLowerCase();
+  apply();
 });
 document.getElementById('amapKeyInput').addEventListener('change',e=>{
   try{localStorage.setItem('amapKey',e.target.value.trim());}catch(err){}
