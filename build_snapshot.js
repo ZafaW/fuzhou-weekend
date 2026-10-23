@@ -64,7 +64,8 @@ function addEligible(p){
 function normName(n){ return (n||'').replace(/[（(][^()（）]*[)）]/g,'').trim(); }
 function dateStr(d){ d=d||new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
 
-async function refreshPOIs(){
+async function refreshPOIs(maxKm){
+  maxKm = maxKm || MAX_KM;
   const all=[]; const dup=new Set();
   for(const kw of KWS){
     const pois = await amapText(kw, 1);
@@ -75,7 +76,7 @@ async function refreshPOIs(){
     if(parts.length!==2 || isNaN(parts[0])) return false;
     const w=gcj2wgs(parts[1], parts[0]);
     const km=hav(w, START);
-    return km>=MIN_KM && km<=MAX_KM;
+    return km>=MIN_KM && km<=maxKm;
   });
   const eligible = inRange.filter(addEligible);
   const seen=new Set();
@@ -86,12 +87,13 @@ async function refreshPOIs(){
     const core=mh.replace(/^福州市/,'');
     if(out.some(p=>normName(p.name).indexOf(core)>=0)) continue;
     const pois=await amapText(mh,1);
-    const hit=pois.find(p=>p&&p.name&&p.location&&addEligible(p)&&normName(p.name).indexOf(core)>=0&&inRangeKm(p)<=MAX_KM);
+    const hit=pois.find(p=>p&&p.name&&p.location&&addEligible(p)&&normName(p.name).indexOf(core)>=0&&inRangeKm(p)<=maxKm);
     if(hit){ out.push(hit); console.log('[补捞] 白名单地点漏网已补回：'+hit.name); }
   }
   return out;
 }
 
+if(require.main===module){
 (async()=>{
   let html;
   try{ html = fs.readFileSync(TEMPLATE, 'utf8'); }
@@ -116,3 +118,7 @@ async function refreshPOIs(){
   catch(e){ console.error('[错] 写盘失败', e.message); process.exit(1); }
   console.log('[快照] 已生成自包含 HTML：'+OUTPUT+'  date='+dateStr()+'  内嵌 POI='+pois.length+' 个  文件大小='+(fs.statSync(OUTPUT).size/1024).toFixed(0)+'KB');
 })();
+}
+
+// 供 run_daily.js 复用：导出检索与门禁参数（require 时不触发生成）
+module.exports = { refreshPOIs, amapText, START, MIN_KM, MAX_KM, MIN_RATING, KWS, BLOCK_RE, ALLOW_RE, normName, addEligible };
