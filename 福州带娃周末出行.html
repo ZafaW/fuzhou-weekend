@@ -245,9 +245,9 @@
     <div class="note" style="margin-bottom:12px;">"距起点"随上方起点实时更新；默认按「🍼适配」排序（6 岁和 1 岁不一样，适配度按宝宝月龄算）；点「距起点 / 🍼适配」表头可切换排序；高亮行 = 当前筛选匹配；点任意行可在地图定位并弹详情。</div>
     <table id="placeTable">
       <colgroup>
-        <col style="width:3%"><col style="width:16%"><col style="width:9%"><col style="width:12%"><col style="width:17%"><col style="width:13%"><col style="width:8.5%"><col style="width:8%"><col style="width:5.5%"><col style="width:8%">
+        <col style="width:3%"><col style="width:15%"><col style="width:9%"><col style="width:11.5%"><col style="width:21%"><col style="width:14%"><col style="width:7.5%"><col style="width:7%"><col style="width:12%">
       </colgroup>
-      <thead><tr><th>#</th><th>地点</th><th id="sortTh">距起点 <span id="sortInd"></span></th><th>游玩项目</th><th>卖点（适合这个月龄）</th><th>🍴 吃饭/野餐</th><th>⭐ 评分/人均</th><th>出行时间</th><th id="fitTh">🍼适配 <span id="fitInd">▼</span></th><th>🧭 导航</th></tr></thead>
+      <thead><tr><th>#</th><th>地点</th><th id="sortTh">距起点 <span id="sortInd"></span></th><th>游玩项目</th><th>卖点（适合这个月龄）</th><th>🍴 吃饭/野餐</th><th>出行时间</th><th id="fitTh">🍼适配 <span id="fitInd">▼</span></th><th>🧭 导航</th></tr></thead>
       <tbody id="placeBody"></tbody>
     </table>
     <div class="callout">📌 <b>一句话选景：</b>懒得跑→乌龙江湿地 / 沙滩公园 / 闽江公园；想凉快不晒→欧乐堡 / 少儿图书馆 / 商场；想放电→儿童公园 / 飞凤山；想看真海→平潭 / 奇达村；夏天避暑→鼓岭。</div>
@@ -506,7 +506,7 @@ function renderTable(){
     const tr=document.createElement('tr');
     tr.dataset.id=p.id; tr.dataset.w=p.w; tr.dataset.t=p.t; tr.dataset.indoor=p.indoor; tr.dataset.shade=p.shade; tr.dataset.purpose=p.purpose;
     tr.innerHTML=`<td class="num">${p.id}</td><td class="place">${p.name}${p.isNew?' <span class="note">🌟新</span>':''}<br><span class="note">${p.sub}</span></td>`+
-      `<td class="dist"></td><td>${p.play}</td><td>${p.sell}</td><td class="food">${p.food}</td><td class="rating">${ratingText(p)}</td><td>${p.time}</td>`+
+      `<td class="dist"></td><td>${p.play}</td><td>${p.sell}</td><td class="food">${p.food}</td><td>${p.time}</td>`+
       `<td class="fit">${fitCell(p)}</td>`+
       `<td><div class="ops"><button class="navbtn" onclick="event.stopPropagation();amapNav(${p.id})">🧭 导航</button><button class="navbtn" onclick="event.stopPropagation();openReview(${p.id})">🔗 查评分</button><button class="navbtn" onclick="event.stopPropagation();openGuide(${p.id})">📄 简介</button><button class="navbtn" onclick="event.stopPropagation();openStrategy(${p.id})">📋 攻略</button></div></td>`;
     tr.addEventListener('click',()=>focusOnMap(p.id));
@@ -723,7 +723,7 @@ function ratingText(p){
 function fitCell(p){
   const s=(p.fit==null?0:p.fit), lab=p.fitLabel||'—';
   const cls=s>=80?'fit-great':s>=60?'fit-ok':s>=40?'fit-mid':s>=20?'fit-low':'fit-no';
-  return '<b class="'+cls+'">'+s+'</b> <span class="note">'+lab+'</span>';
+  return '<b class="'+cls+'">'+s+'</b><br><span class="note">'+lab+'</span>';
 }
 /* 查评分：跳转高德（聚合大众点评/美团等评分与用户评价） */
 window.openReview=function(id){const p=PLACES.find(x=>x.id===id); window.open('https://www.amap.com/search?query='+encodeURIComponent(p.name),'_blank');};
