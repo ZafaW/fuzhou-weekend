@@ -1,0 +1,32 @@
+{
+  "name": "福州带娃周末出行指南",
+  "short_name": "带娃指南",
+  "description": "福州及周边的带娃周末出行指南：智能筛选、地图起点、实时清单、装备与攻略。",
+  "lang": "zh-CN",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f7f9f8",
+  "theme_color": "#2f8f83",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
