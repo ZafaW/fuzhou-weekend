@@ -206,7 +206,7 @@
     <h2>🗺️ 地图与起点（高德底图）</h2>
     <div class="startrow">
       <label>📍 起点</label>
-      <input id="startInput" value="农林大学" placeholder="输入起点，如：农林大学 / 东街口 / 宝龙">
+      <input id="startInput" value="福建农林大学金山校区" placeholder="输入起点，如：农林大学 / 东街口 / 宝龙">
       <button id="locateBtn">定位并更新</button>
       <button class="ghost" id="geoBtn">📡 我的位置</button>
       <button class="pick" id="pickBtn">🗺️ 点图选起点</button>
@@ -367,7 +367,7 @@ let PLACES = SEED_PLACES.map(p=>({...p}));
 
 const sel={weather:null,time:null,baby:null,purpose:null,distance:null,onlyFit:null};
 let searchQ='';   // 清单关键词搜索（独立于智能筛选，可叠加）
-let start={lat:26.0766,lng:119.2397,name:"福建农林大学"};
+let start={lat:26.0872,lng:119.2329,name:"福建农林大学金山校区"};
 let savedStarts=[];
 let sortMode='fit', pickMode=false;   // 默认按🍼适龄适配度降序排序
 let minKm=0, maxKm=30;   // 搜索距离区间(km)：默认 0–30；同时作为清单的硬显示窗口（窗口外不显示）；最大可设 80
@@ -1680,8 +1680,11 @@ function renderSaved(){
     const el=document.createElement('span'); el.className='chip saved'+(s.name===start.name?' cur':'');
     el.innerHTML='<span class="sname">📍 '+s.name+'</span><span class="sdel" title="删除该起点">✕</span>';
     el.querySelector('.sname').addEventListener('click',()=>setStart(s.lat,s.lng,s.name));
-    el.querySelector('.sdel').addEventListener('click',ev=>{ev.stopPropagation();savedStarts.splice(idx,1);saveStarts();renderSaved();
-      document.getElementById('startInfo').textContent='已删除记忆起点：'+s.name;});
+    el.querySelector('.sdel').addEventListener('click',ev=>{ev.stopPropagation();const removed=savedStarts[idx];savedStarts.splice(idx,1);saveStarts();renderSaved();
+      document.getElementById('startInfo').textContent='已删除记忆起点：'+removed.name+'（正在同步云端…）';
+      deleteOrigin(removed.name, removed.lat, removed.lng).then(ok=>{
+        document.getElementById('startInfo').textContent=ok?'已删除并同步云端：'+removed.name:'已删除本机记忆（云端同步失败，可稍后重试）';
+      });});
     box.appendChild(el);
   });
 }
@@ -1733,6 +1736,14 @@ function loadAge(){try{const v=JSON.parse(localStorage.getItem('fz_age'));if(v){
 // 所有用户打开页面保存起点即可自动写回仓库 origins.json，无需任何配置。
 const ORIGIN_API = 'https://a422398a5c853b9a6.app.workbuddy.host/api/save-origins?sharecode=AOKZ35Y2P7';
 const ORIGIN_GET = 'https://a422398a5c853b9a6.app.workbuddy.host/api/origins?sharecode=AOKZ35Y2P7';
+const ORIGIN_DEL = 'https://a422398a5c853b9a6.app.workbuddy.host/api/delete-origin?sharecode=AOKZ35Y2P7';
+async function deleteOrigin(name, lat, lng){
+  try{
+    const r=await fetch(ORIGIN_DEL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name, lat:+lat.toFixed(6), lng:+lng.toFixed(6)}) });
+    const j=await r.json();
+    return !!(r.ok && j && j.ok);
+  }catch(e){ return false; }
+}
 async function syncOrigins(){
   const data = { origins: savedStarts.map(s=>({name:s.name, lng:+s.lng.toFixed(6), lat:+s.lat.toFixed(6)})) };
   if(!data.origins.length) return;
@@ -1754,7 +1765,7 @@ async function loadRepoOrigins(){
         savedStarts.push({name:o.name, lat:+o.lat, lng:+o.lng}); changed=true;
       }
     }
-    if(changed){ saveStarts(); renderSaved(); }
+    if(changed){ try{localStorage.setItem('fz_starts',JSON.stringify(savedStarts));}catch(e){} renderSaved(); }
   }catch(e){}
 }
 
