@@ -6,7 +6,7 @@
 //   1) 从仓库拉 build_snapshot.js + 模板 HTML（保证用最新版生成器）
 //   2) node build_snapshot.js 生成自包含 今日.html（内嵌当天高德 POI）
 //   3) 把 今日.html 写回仓库（存在则更新，不存在则新建）
-// 产物：稳定的公开原始链接 https://raw.githubusercontent.com/{OWNER}/{REPO}/main/今日.html
+// 产物：index.html（稳定公开，经 htmlpreview.github.io / GitHub Pages 渲染为网页）
 // 用法：GITHUB_TOKEN=xxx OWNER=xxx REPO=xxx node run_daily.js
 // 依赖环境变量：GITHUB_TOKEN（细粒度 PAT，仅该仓库 contents:read&write）、OWNER、REPO
 
@@ -69,11 +69,13 @@ async function getFile(p){
   const content = b64enc(fs.readFileSync(outPath,'utf8'));
   console.log('[生成] 今日.html 大小 '+(fs.statSync(outPath).size/1024).toFixed(0)+'KB');
 
-  // 3) 写回仓库（更新或新建）
-  const existing = await getFile('今日.html');
+  // 3) 写回仓库（更新或新建）。统一发布为 index.html（ASCII 文件名，便于 htmlpreview/githack/Pages 渲染）
+  const existing = await getFile('index.html');
   const payload = { message:'每日快照 '+new Date().toISOString().slice(0,10), content, branch: BRANCH };
   if(existing && existing.sha) payload.sha = existing.sha;
-  await gh('PUT','/repos/'+OWNER+'/'+REPO+'/contents/'+encodeURIComponent('今日.html'), payload);
-  const raw = 'https://raw.githubusercontent.com/'+OWNER+'/'+REPO+'/'+BRANCH+'/今日.html';
+  await gh('PUT','/repos/'+OWNER+'/'+REPO+'/contents/'+encodeURIComponent('index.html'), payload);
+  const raw = 'https://raw.githubusercontent.com/'+OWNER+'/'+REPO+'/'+BRANCH+'/index.html';
+  const view = 'https://htmlpreview.github.io/?https://raw.githubusercontent.com/'+OWNER+'/'+REPO+'/'+BRANCH+'/index.html';
   console.log('[完成] 已发布：'+raw);
+  console.log('[查看] 渲染链接：'+view);
 })().catch(e=>{ console.error('[失败]', e.message); process.exit(1); });
