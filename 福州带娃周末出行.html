@@ -33,10 +33,24 @@
   .toc-link.active{background:var(--primary-light);color:var(--primary);border-left-color:var(--accent);font-weight:700;}
   .side-top{margin-top:12px;width:100%;border:1px solid var(--border);background:#fff;color:var(--muted);border-radius:9px;padding:8px;font-size:.84rem;cursor:pointer;transition:.15s;}
   .side-top:hover{border-color:var(--primary);color:var(--primary);}
+  /* —— 手机端：可折叠抽屉目录 —— */
+  .tocfab{display:none;position:fixed;left:0;top:46%;transform:translateY(-50%);z-index:60;
+    background:var(--primary);color:#fff;border:none;border-radius:0 12px 12px 0;padding:13px 7px;
+    writing-mode:vertical-rl;letter-spacing:3px;font-size:.85rem;font-weight:600;
+    box-shadow:0 3px 10px rgba(0,0,0,.25);cursor:pointer;}
+  .tocfab:active{background:#26786e;}
+  .tocmask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:70;opacity:0;pointer-events:none;transition:.2s;}
+  .tocmask.show{opacity:1;pointer-events:auto;}
+  .tocdrawer{position:fixed;top:0;left:0;bottom:0;width:min(78vw,300px);background:#fff;z-index:71;
+    transform:translateX(-105%);transition:.25s;overflow-y:auto;padding:16px 14px;box-shadow:2px 0 16px rgba(0,0,0,.18);}
+  .tocdrawer.show{transform:none;}
+  .tocdrawer .side-title{display:flex;align-items:center;}
+  .tocclose{margin-left:auto;background:none;border:none;font-size:1.05rem;color:var(--muted);cursor:pointer;padding:2px 6px;line-height:1;}
   section{scroll-margin-top:16px;}
   @media(max-width:880px){
     .layout{flex-direction:column;padding:16px 12px 50px;gap:0;}
     .sidebar{display:none;}
+    .tocfab{display:block;}
   }
   header.hero{background:linear-gradient(135deg,var(--primary),#3aa897);color:#fff;border-radius:18px;padding:28px 26px;margin-bottom:22px;box-shadow:0 6px 20px rgba(47,143,131,.25);}
   header.hero h1{margin:0 0 6px;font-size:1.55rem;}
@@ -195,6 +209,26 @@
       <button class="side-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑ 回到顶部</button>
     </div>
   </aside>
+
+  <!-- 手机端：可折叠抽屉目录 -->
+  <button class="tocfab" id="tocFab" aria-label="打开目录">📑 目录</button>
+  <div class="tocmask" id="tocMask"></div>
+  <nav class="tocdrawer" id="tocDrawer" aria-label="页面目录">
+    <div class="side-title">📑 目录<button class="tocclose" id="tocClose" aria-label="关闭">✕</button></div>
+    <nav class="toc">
+      <a class="toc-link" href="#top" data-target="top">👶 顶部</a>
+      <a class="toc-link" href="#filterSec" data-target="filterSec">🔎 智能筛选</a>
+      <a class="toc-link" href="#mapSec" data-target="mapSec">🗺️ 地图与起点</a>
+      <a class="toc-link" href="#hotSec" data-target="hotSec">🔥 每日热门</a>
+      <a class="toc-link" href="#sec-list" data-target="sec-list">📋 推荐清单</a>
+      <a class="toc-link" href="#sec-pack" data-target="sec-pack">🎒 装备清单</a>
+      <a class="toc-link" href="#sec-tips" data-target="sec-tips">💡 实操细节</a>
+      <a class="toc-link" href="#sec-decide" data-target="sec-decide">⚡ 快速决策</a>
+      <a class="toc-link" href="#sec-history" data-target="sec-history">🕑 历史推荐</a>
+    </nav>
+    <button class="side-top" onclick="window.scrollTo({top:0,behavior:'smooth'});closeToc()">↑ 回到顶部</button>
+  </nav>
+
   <div class="wrap">
 
   <header class="hero" id="top">
@@ -1936,6 +1970,18 @@ document.getElementById('mergeBtn').addEventListener('click', async ()=>{
     });
   },{rootMargin:'-15% 0px -75% 0px',threshold:0});
   map.forEach((a,t)=>obs.observe(t));
+})();
+
+/* ===== 手机端抽屉目录：开合逻辑 ===== */
+(function(){
+  const fab=document.getElementById('tocFab'),mask=document.getElementById('tocMask'),
+        drawer=document.getElementById('tocDrawer'),close=document.getElementById('tocClose');
+  if(!fab||!mask||!drawer) return;
+  window.closeToc=function(){ mask.classList.remove('show'); drawer.classList.remove('show'); };
+  fab.addEventListener('click',()=>{ mask.classList.add('show'); drawer.classList.add('show'); });
+  mask.addEventListener('click',closeToc);
+  if(close) close.addEventListener('click',closeToc);
+  drawer.querySelectorAll('.toc-link').forEach(a=>a.addEventListener('click',closeToc));
 })();
 
 /* ===== 后端优先：从常开后台读取当日清单（关掉网页也能每天自动刷新） ===== */
