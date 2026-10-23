@@ -1521,7 +1521,7 @@ function mergePOIs(pois){
   // 1) 按归一化核心名聚合同一大场所的所有子 POI（如"沙滩公园-北门/南门/停车场"合并为一条）
   const groups={};
   pois.forEach(p=>{ if(!p.name||!p.location) return; const cn=normCore(p.name); if(!cn) return; (groups[cn]=groups[cn]||[]).push(p); });
-  let reps=Object.keys(groups).map(cn=>{ const rep=pickBest(groups[cn]); if(rep && /[－\-—]/.test(rep.name||'')) rep={...rep, name:cn}; return rep; });
+  let reps=Object.keys(groups).map(cn=>{ const rep=pickBest(groups[cn]); return (rep && /[－\-—]/.test(rep.name||'')) ? {...rep, name:cn} : rep; });
   // 2) 按评分降序，让优质推荐排前面
   reps.sort((a,b)=>(Number((b.biz_ext&&b.biz_ext.rating)||0))-(Number((a.biz_ext&&a.biz_ext.rating)||0)));
   // 3) 校准已有（种子）地点：写回真实坐标 + 评分/人均
