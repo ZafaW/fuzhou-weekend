@@ -67,10 +67,28 @@
   .toast.show{opacity:1}
   .hidden{display:none!important}
   .pinbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .lockscreen{position:fixed;inset:0;background:rgba(15,23,42,.93);display:flex;align-items:center;justify-content:center;z-index:200;padding:16px}
+  .lockcard{background:#fff;border-radius:18px;padding:28px 24px;width:min(360px,100%);text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.45)}
+  .lockicon{font-size:42px;line-height:1}
+  .lockcard h2{font-size:18px;margin:10px 0 4px}
+  .lockcard .lockpin{margin-top:14px}
+  .lockcard #lockBtn{width:100%;margin-top:12px}
+  .lockscreen .note{max-width:300px;margin:12px auto 0}
 </style>
 </head>
 <body>
-<div class="wrap">
+<div id="lockScreen" class="lockscreen">
+  <div class="lockcard">
+    <div class="lockicon">🔐</div>
+    <h2>数据管理台 · 加密访问</h2>
+    <div class="sub">请输入管理访问密码以进入</div>
+    <input id="lockPin" class="lockpin" type="password" placeholder="管理访问密码">
+    <button class="btn primary" id="lockBtn">解锁进入</button>
+    <div id="lockErr" class="err" style="margin-top:8px;text-align:center"></div>
+    <div class="note">默认访问密码为 <b>fz2026</b>，建议尽快在服务器设置环境变量 <code>ADMIN_PIN</code> 修改。</div>
+  </div>
+</div>
+<div class="wrap hidden" id="appWrap">
   <header>
     <div>
       <h1>福州带娃周末 · 数据管理台</h1>
@@ -81,13 +99,6 @@
       <button class="btn" id="refresh">🔄 刷新</button>
     </div>
   </header>
-
-  <div id="pinBox" class="card pinbar hidden">
-    <span class="pill">管理 PIN</span>
-    <input id="pinInput" style="flex:1;min-width:120px" placeholder="输入管理 PIN 以启用增删改（默认 fz2026）">
-    <button class="btn primary sm" id="pinSave">解锁</button>
-    <span class="sub">写操作（增/删/改起点、知识库、文档）需要 PIN。</span>
-  </div>
 
   <div class="tabs">
     <div class="tab active" data-tab="origins">📍 起点</div>
@@ -235,15 +246,15 @@ const API='https://a422398a5c853b9a6.app.workbuddy.host';
 const ORIGINS_API=API+'/api/origins'+SHARE;
 const DOCS_API=API+'/api/docs'+SHARE;
 
-// —— 管理 PIN ——
-let ADMIN_PIN=localStorage.getItem('fz_admin_pin')||'';
-function ensurePin(msg){ if(ADMIN_PIN){ return true; } document.getElementById('pinBox').classList.remove('hidden'); toast(msg||'请先在上方输入管理 PIN'); return false; }
+// —— 管理 PIN（登录态存于 sessionStorage，关闭标签页即失效，确保加密访问）——
+let ADMIN_PIN=sessionStorage.getItem('fz_admin_pin')||'';
+function ensurePin(){ return true; } // 整页已锁，进入即已登录
 function h(){ return ADMIN_PIN?{'x-admin-pin':ADMIN_PIN}:{}; }
 
 function esc(s){return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 function clip(s,n){s=String(s||'');return s.length>n?s.slice(0,n)+'…':s;}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200);}
-async function jget(u){const r=await fetch(u);return r.json();}
+async function jget(u){const r=await fetch(u,{headers:{...h()}});return r.json();}
 async function jpost(u,body){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json',...h()},body:JSON.stringify(body)});return r.json();}
 
 // —— 知识库分类（与后端一致）——
@@ -493,15 +504,29 @@ async function loadStats(){
 }
 function bar(label,val,max){const w=Math.max(2,Math.round(val/max*100));return '<div class="barwrap"><span class="lab">'+esc(label)+'</span><span class="bar" style="width:'+w+'%"></span><span class="val">'+val+'</span></div>';}
 
-// —— PIN 设置 ——
-document.getElementById('pinSave').addEventListener('click',()=>{
-  const v=document.getElementById('pinInput').value.trim();if(!v){toast('请输入 PIN');return;}
-  ADMIN_PIN=v;localStorage.setItem('fz_admin_pin',v);
-  document.getElementById('pinBox').classList.add('hidden');toast('已解锁写操作');
-});
+// —— 加密访问：登录校验 ——
+function showLock(){ document.getElementById('lockScreen').classList.remove('hidden'); document.getElementById('appWrap').classList.add('hidden'); }
+function hideLock(){ document.getElementById('lockScreen').classList.add('hidden'); document.getElementById('appWrap').classList.remove('hidden'); }
+async function tryLogin(){
+  const v=document.getElementById('lockPin').value.trim();
+  const err=document.getElementById('lockErr');
+  if(!v){ err.textContent='请输入密码'; return; }
+  err.textContent='验证中…';
+  try{
+    const r=await fetch(API+'/api/verify-pin'+SHARE,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin:v})}).then(x=>x.json());
+    if(r && r.ok){
+      ADMIN_PIN=v; sessionStorage.setItem('fz_admin_pin',v);
+      hideLock(); loadOrigins();
+    }else{
+      err.textContent='密码错误，请重试';
+    }
+  }catch(e){ err.textContent='验证失败：'+e.message; }
+}
+document.getElementById('lockBtn').addEventListener('click',tryLogin);
+document.getElementById('lockPin').addEventListener('keydown',e=>{ if(e.key==='Enter') tryLogin(); });
 
-// 初始加载
-loadOrigins();
+// 初始加载：已登录直接进入，否则显示锁屏
+if(ADMIN_PIN){ hideLock(); loadOrigins(); } else { showLock(); }
 </script>
 </body>
 </html>
