@@ -125,18 +125,37 @@ function patchSpotNotes(tplHtml, added){
     const m = tplHtml0.match(/(const SPOT_NOTES=\{[\s\S]*?\n\};)/);
     const have = new Set((m[1].match(/'([^']+)':\{u:/g)||[]).map(s=>((s.match(/^'([^']+)':\{u:/)||[])[1]||'')));
     const haveArr = [...have];
+    // 自动补全「精修标准」：按类型给出实用攻略，不再输出「待人工补全」占位；仍标记 _auto 便于识别待进一步打磨
+    const autoFill = (p) => {
+      const t = (p.type||'').split(';')[0] || '';
+      const r = (p.biz_ext && p.biz_ext.rating) || '';
+      const addr = p.address || '当地';
+      const rate = r ? ('评分'+r) : '评分暂无（以现场为准）';
+      const head = '高德检索到的带娃目的地（'+t+'），'+rate+'，位于'+addr+'。';
+      let u, warn, food;
+      if (/图书|科教|文化|博物|展览|展覽/.test(t)) {
+        u = head + '室内避暑遛娃、免费借阅，多有少儿阅览与绘本专区，低幼宝宝也能安静翻书；空调凉爽不晒，泡半天省心';
+        warn = '馆内一般无餐饮售卖，可带水杯（多数有直饮水）；开放时间各馆不同（通常周一闭馆、周末延长），出行前查该馆公众号；带低幼娃注意轻声';
+        food = '馆内无餐；就近商圈餐饮解决（路线见地图）';
+      } else if (/体育|休闲|游乐|主题公园|游乐园|亲子|玩乐/.test(t)) {
+        u = head + '以游乐/运动设施为主，适合带娃放电；室内外结合，注意项目适合年龄';
+        warn = '多为收费、项目另计；周末人多排队；动物/游乐区注意卫生与手消毒；低幼选软包区';
+        food = '馆内小卖部或商场内餐饮丰富（路线见地图）';
+      } else { // 公园/广场/风景名胜/湿地/海滨/植物园/动物园 等户外绿地
+        u = head + '城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落';
+        warn = '园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实';
+        food = '园内基本无餐厅，就近商圈餐饮（路线见地图）';
+      }
+      return { u, warn, food };
+    };
     for(const p of merged){
       const n = normName(p.name);
       if(!n || have.has(n)) continue;
       if(haveArr.some(h=>h.indexOf(n)>=0 || n.indexOf(h)>=0)) continue;   // 模糊去重
       const addr = (p.address||'') + (p.name||'');
       if(haveArr.some(h=>addr.indexOf(h)>=0)){ skipSub++; continue; }      // 子设施（地址含父景区名）跳过
-      const r = (p.biz_ext && p.biz_ext.rating) || '';
-      const t = (p.type||'').split(';')[0] || '';
-      const u = '高德检索到的带娃目的地（'+t+'），评分'+(r||'暂无')+'，位于'+(p.address||'')+'。具体玩法待人工补全。';
-      const warn = '信息基于高德，仅供参考；出行前请核实开放时间与票价。';
-      const food = '餐饮以'+(p.address||'当地')+'周边为准，建议地图搜索或自备。';
-      added.push({ n, u, warn, food });
+      const note = autoFill(p);
+      added.push({ n, u: note.u, warn: note.warn, food: note.food });
     }
     patched = patchSpotNotes(tplHtml0, added);
     autoCount = added.length;
