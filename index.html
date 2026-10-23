@@ -1607,18 +1607,31 @@ async function locate(text){
   document.getElementById('startInfo').textContent='定位中…';
   const key=getAmapKey();
   if(key){
+    // 优先走在线后端代理（后端直连高德，绕开手机浏览器对 restapi.amap.com 的跨域/劫持）
     try{
-      // 用 JSONP 请求地理编码（高德 Web 服务无 CORS 头，裸 fetch 会被浏览器跨域拦截 → 报「Key解析失败」）
+      const r=await fetch('https://a422398a5c853b9a6.app.workbuddy.host/api/geocode?sharecode=AOKZ35Y2P7&address='+encodeURIComponent(text));
+      const j=await r.json();
+      if(r.ok && j && j.ok && j.location){
+        const [lng,lat]=j.location.split(',').map(Number); // GCJ-02
+        const w=gcj2wgs(lat,lng); setStart(w.lat,w.lng,text); return;
+      }
+      if(r.ok && j && j.ok===false && j.error==='未找到该地址'){
+        document.getElementById('startInfo').textContent='未找到「'+text+'」，换个更具体的地名，或用「🗺️点图选起点」';
+        return;
+      }
+    }catch(e){ /* 后端不可达，回退 JSONP 直连 */ }
+    // 回退：JSONP 直连高德
+    try{
       const url='https://restapi.amap.com/v3/geocode/geo?key='+encodeURIComponent(key)+'&address='+encodeURIComponent(text)+'&city=福州';
       const j=await amapJSONP(url);
       if(j && j.status==='1' && j.geocodes && j.geocodes[0]){
-        const [lng,lat]=j.geocodes[0].location.split(',').map(Number); // 高德返回 GCJ-02
+        const [lng,lat]=j.geocodes[0].location.split(',').map(Number); // GCJ-02
         const w=gcj2wgs(lat,lng); setStart(w.lat,w.lng,text); return;
       }
       document.getElementById('startInfo').textContent='未找到「'+text+'」，换个更具体的地名，或用「🗺️点图选起点」';
       return;
     }catch(e){}
-    document.getElementById('startInfo').textContent='地址解析失败（可能网络或Key受限），请用「🗺️点图选起点」或「📡我的位置」';
+    document.getElementById('startInfo').textContent='地址解析失败（网络受限），请用「🗺️点图选起点」或「📡我的位置」';
     return;
   }
   document.getElementById('startInfo').textContent='未填高德Key：请点「🗺️点图选起点」在地图上点选，或用「📡我的位置」';
