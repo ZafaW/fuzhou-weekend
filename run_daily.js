@@ -47,15 +47,24 @@ function gh(method, p, body){
 }
 function b64dec(s){ return Buffer.from(s,'base64').toString('utf8'); }
 function b64enc(s){ return Buffer.from(s,'utf8').toString('base64'); }
-async function getFile(p){
-  try{ const j=await gh('GET','/repos/'+OWNER+'/'+REPO+'/contents/'+encodeURIComponent(p)+'?ref='+BRANCH); return j; }
-  catch(e){ return null; }
+async function getFile(p, marker, tries){
+  tries = tries || 1;
+  let last = null;
+  for(let i=0;i<tries;i++){
+    try{
+      const j = await gh('GET','/repos/'+OWNER+'/'+REPO+'/contents/'+encodeURIComponent(p)+'?ref='+BRANCH);
+      if(!marker || Buffer.from(j.content,'base64').toString('utf8').includes(marker)) return j;
+      last = j;  // Contents API 有最终一致延迟：刚 PUT 的模板可能短暂返回旧副本，校验标记后重试
+    }catch(e){ last = null; }
+    if(i<tries-1) await new Promise(r=>setTimeout(r,8000));
+  }
+  return last;
 }
 
 (async()=>{
   // 1) 拉生成器 + 模板
   const snap = await getFile('build_snapshot.js');
-  const tpl = await getFile('福州带娃周末出行.html');
+  const tpl = await getFile('福州带娃周末出行.html','奇达村',6);
   if(!snap || !tpl){ console.error('[错] 仓库缺少 build_snapshot.js 或 福州带娃周末出行.html（模板），请先推送这两个文件'); process.exit(1); }
   fs.writeFileSync(path.join(TMP,'build_snapshot.js'), b64dec(snap.content));
   fs.writeFileSync(path.join(TMP,'福州带娃周末出行.html'), b64dec(tpl.content));
