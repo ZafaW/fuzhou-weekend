@@ -25,7 +25,7 @@
   section{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 22px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,.03);}
   h2{font-size:1.2rem;margin:0 0 14px;color:var(--primary);display:flex;align-items:center;gap:8px;}
   h2::before{content:"";width:6px;height:20px;background:var(--accent);border-radius:3px;display:inline-block;}
-  table{width:100%;border-collapse:collapse;font-size:.86rem;}
+  table{width:100%;border-collapse:collapse;font-size:.86rem;table-layout:fixed;}
   th,td{border:1px solid var(--border);padding:9px 10px;text-align:left;vertical-align:top;}
   th{background:var(--primary-light);color:var(--primary);font-weight:600;white-space:nowrap;}
   tbody tr{cursor:pointer;}
@@ -34,8 +34,8 @@
   tbody tr.detail{background:#fff6ea;box-shadow:inset 3px 0 0 var(--accent);}
   tbody tr:hover{background:#f0f7f5;}
   .num{font-weight:700;color:var(--accent);text-align:center;width:34px;}
-  .place{font-weight:600;color:var(--text);word-break:break-word;}
-  .dist{text-align:center;white-space:nowrap;}
+  .place{font-weight:600;color:var(--text);word-break:normal;overflow-wrap:anywhere;line-height:1.5;}
+  .dist{text-align:center;line-height:1.45;}
   .fit{text-align:center;white-space:nowrap;}
   .fit b{font-size:1.05rem;}
   .fit-great{color:#1f9d55;} .fit-ok{color:#3a9d6e;} .fit-mid{color:#c79a00;} .fit-low{color:#d9730a;} .fit-no{color:#c0392b;}
@@ -241,6 +241,9 @@
     <h2>一、周末出行推荐清单（共 <span id="placeCount">22</span> 个）</h2>
     <div class="note" style="margin-bottom:12px;">"距起点"随上方起点实时更新；默认按「🍼适配」排序（6 岁和 1 岁不一样，适配度按宝宝月龄算）；点「距起点 / 🍼适配」表头可切换排序；高亮行 = 当前筛选匹配；点任意行可在地图定位并弹详情。</div>
     <table id="placeTable">
+      <colgroup>
+        <col style="width:3.5%"><col style="width:17%"><col style="width:9.5%"><col style="width:13%"><col style="width:19%"><col style="width:13.5%"><col style="width:8.5%"><col style="width:8.5%"><col style="width:4%"><col style="width:4%">
+      </colgroup>
       <thead><tr><th>#</th><th>地点</th><th id="sortTh">距起点 <span id="sortInd"></span></th><th>游玩项目</th><th>卖点（适合这个月龄）</th><th>🍴 吃饭/野餐</th><th>⭐ 评分/人均</th><th>出行时间</th><th id="fitTh">🍼适配 <span id="fitInd">▼</span></th><th>🧭 导航</th></tr></thead>
       <tbody id="placeBody"></tbody>
     </table>
