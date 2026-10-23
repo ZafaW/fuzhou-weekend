@@ -75,7 +75,7 @@ async function getFile(p){
   if(existing && existing.sha) payload.sha = existing.sha;
   await gh('PUT','/repos/'+OWNER+'/'+REPO+'/contents/'+encodeURIComponent('index.html'), payload);
   const raw = 'https://raw.githubusercontent.com/'+OWNER+'/'+REPO+'/'+BRANCH+'/index.html';
-  const view = 'https://htmlpreview.github.io/?https://raw.githubusercontent.com/'+OWNER+'/'+REPO+'/'+BRANCH+'/index.html';
+  const view = 'https://'+OWNER.toLowerCase()+'.github.io/'+REPO+'/';
   console.log('[完成] 已发布：'+raw);
   console.log('[查看] 渲染链接：'+view);
 })().catch(e=>{ console.error('[失败]', e.message); process.exit(1); });
