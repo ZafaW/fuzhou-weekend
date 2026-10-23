@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>福州带娃周末 · 数据查看台</title>
+<style>
+  :root{ --bg:#f4f7fb; --card:#fff; --ink:#1f2a37; --sub:#6b7280; --line:#e5e9f0; --blue:#2f6df6; --green:#19a974; --amber:#e6a23c; --red:#e1533f; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;}
+  .wrap{max-width:920px;margin:0 auto;padding:18px 14px 60px;}
+  header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px;}
+  h1{font-size:20px;margin:0}
+  h2{font-size:16px;margin:22px 0 10px;display:flex;align-items:center;gap:8px}
+  .sub{color:var(--sub);font-size:13px}
+  .btn{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:10px;padding:8px 14px;font-size:14px;cursor:pointer}
+  .btn:hover{border-color:var(--blue);color:var(--blue)}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:6px 0 4px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .stat .n{font-size:26px;font-weight:700}
+  .stat .l{color:var(--sub);font-size:12px;margin-top:2px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--sub);font-weight:600;font-size:12px}
+  .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:12px;white-space:nowrap}
+  .b-manual{background:#e8f6ef;color:var(--green)}
+  .b-auto{background:#fdf3e3;color:var(--amber)}
+  .b-empty{background:#fdecec;color:var(--red)}
+  input[type=search]{width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:14px;margin-bottom:10px}
+  .note{color:var(--sub);font-size:12px;margin-top:6px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .kv{color:var(--sub)}
+  .u-clip{max-width:520px;color:#374151;font-size:13px}
+  .err{color:var(--red);font-size:13px}
+  a{color:var(--blue);text-decoration:none}
+  .pill{font-size:12px;color:var(--sub);border:1px solid var(--line);border-radius:20px;padding:2px 10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>福州带娃周末 · 数据查看台</h1>
+      <div class="sub">云端起点 · 知识库 · 扩库状态（实时读取已部署数据）</div>
+    </div>
+    <div class="row">
+      <a class="btn" href="./index.html">↩ 返回指南</a>
+      <button class="btn" id="refresh">🔄 刷新</button>
+    </div>
+  </header>
+
+  <h2>📍 云端起点（多起点扩库来源）</h2>
+  <div class="card">
+    <div id="originsStat" class="sub">读取中…</div>
+    <table id="originsTable" style="display:none">
+      <thead><tr><th>名称</th><th>坐标(WGS84)</th></tr></thead>
+      <tbody id="originsBody"></tbody>
+    </table>
+    <div id="originsErr" class="err"></div>
+    <div class="note">来源：在线后端 <code>/api/origins</code>（每次读取 GitHub 最新）。保存新起点后这里会实时出现；每日 08:00 任务会围绕这些起点 80km 检索扩库。</div>
+  </div>
+
+  <h2>📚 知识库 SPOT_NOTES（地点攻略）</h2>
+  <div class="cards" id="kbStats"></div>
+  <div class="card">
+    <input type="search" id="kbSearch" placeholder="搜索地点名 / 攻略关键词…">
+    <table>
+      <thead><tr><th>地点</th><th>类型</th><th>攻略(u) 摘要</th></tr></thead>
+      <tbody id="kbBody"></tbody>
+    </table>
+    <div id="kbErr" class="err"></div>
+    <div class="note">来源：实时解析已部署 <code>index.html</code> 里的 <code>SPOT_NOTES</code>。「自动」= 每日任务按类型自动生成（仍可进一步打磨），「人工」= 精修完成。</div>
+  </div>
+
+  <h2>🕒 扩库状态</h2>
+  <div class="card">
+    <div id="buildStat" class="sub">读取中…</div>
+    <div id="buildErr" class="err"></div>
+    <div class="note">来源：GitHub 上 <code>index.html</code> 最后一次提交时间 = 当日快照/扩库刷新时间（每日 08:00 定时任务写入）。</div>
+  </div>
+</div>
+
+<script>
+const OWNER='ZafaW', REPO='fuzhou-weekend', BRANCH='main';
+const SHARE='?sharecode=AOKZ35Y2P7';
+const ORIGINS_API='https://a422398a5c853b9a6.app.workbuddy.host/api/origins'+SHARE;
+const INDEX_RAW='https://raw.githubusercontent.com/'+OWNER+'/'+REPO+'/'+BRANCH+'/index.html';
+const COMMITS_API='https://api.github.com/repos/'+OWNER+'/'+REPO+'/commits?path=index.html&per_page=1';
+
+function esc(s){return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function clip(s,n){s=String(s||'');return s.length>n?s.slice(0,n)+'…':s;}
+
+async function loadOrigins(){
+  const el=document.getElementById('originsStat');
+  const tbl=document.getElementById('originsTable');
+  const body=document.getElementById('originsBody');
+  const err=document.getElementById('originsErr');
+  err.textContent=''; tbl.style.display='none'; el.textContent='读取中…';
+  try{
+    const r=await fetch(ORIGINS_API); const j=await r.json();
+    const list=j.origins||[];
+    if(!list.length){
+      el.innerHTML='<span class="badge b-empty">暂无起点</span> 云端当前没有记忆起点（多起点扩库暂未生效）。在指南页保存起点后会显示在此。';
+      return;
+    }
+    el.innerHTML='共 <b>'+list.length+'</b> 个记忆起点（每日任务围绕这些起点 80km 扩库）：';
+    body.innerHTML=list.map(o=>'<tr><td>'+esc(o.name)+'</td><td class="kv">'+(o.lat!=null?('lat '+o.lat+', lng '+o.lng):'—')+'</td></tr>').join('');
+    tbl.style.display='table';
+  }catch(e){ err.textContent='读取起点失败：'+e.message+'（可能是网络或后端离线）'; el.textContent=''; }
+}
+
+async function loadKB(){
+  const stats=document.getElementById('kbStats');
+  const body=document.getElementById('kbBody');
+  const err=document.getElementById('kbErr');
+  err.textContent=''; stats.innerHTML='读取中…'; body.innerHTML='';
+  let obj=null;
+  try{
+    const r=await fetch(INDEX_RAW); const html=await r.text();
+    const m=html.match(/const SPOT_NOTES=\{([\s\S]*?)\n\};/);
+    if(!m){ throw new Error('未找到 SPOT_NOTES'); }
+    obj=new Function('return {'+m[1]+'}')();
+  }catch(e){ err.textContent='读取知识库失败：'+e.message; stats.innerHTML=''; return; }
+  const keys=Object.keys(obj);
+  const manual=keys.filter(k=>!obj[k]._auto);
+  const auto=keys.filter(k=>obj[k]._auto);
+  stats.innerHTML=
+    '<div class="stat"><div class="n">'+keys.length+'</div><div class="l">地点总数</div></div>'+
+    '<div class="stat"><div class="n" style="color:var(--green)">'+manual.length+'</div><div class="l">人工精修</div></div>'+
+    '<div class="stat"><div class="n" style="color:var(--amber)">'+auto.length+'</div><div class="l">自动生成</div></div>';
+  const rows=keys.map(k=>({k,v:obj[k]})).sort((a,b)=>{
+    const am=!a.v._auto, bm=!b.v._auto; if(am!==bm)return bm-am; return a.k.localeCompare(b.k,'zh');
+  });
+  window.__rows=rows;
+  renderKB('');
+}
+
+function renderKB(q){
+  const rows=window.__rows||[];
+  const body=document.getElementById('kbBody');
+  const f=q.trim();
+  const flt=!f?rows:rows.filter(r=>r.k.includes(f)||(r.v.u||'').includes(f)||(r.v.warn||'').includes(f)||(r.v.food||'').includes(f));
+  if(!flt.length){ body.innerHTML='<tr><td colspan="3" class="kv">无匹配</td></tr>'; return; }
+  body.innerHTML=flt.map(r=>{
+    const badge=r.v._auto?'<span class="badge b-auto">自动</span>':'<span class="badge b-manual">人工</span>';
+    return '<tr><td>'+esc(r.k)+'</td><td>'+badge+'</td><td class="u-clip">'+esc(clip(r.v.u,80))+'</td></tr>';
+  }).join('');
+}
+
+async function loadBuild(){
+  const el=document.getElementById('buildStat');
+  const err=document.getElementById('buildErr');
+  err.textContent=''; el.textContent='读取中…';
+  try{
+    const r=await fetch(COMMITS_API);
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const arr=await r.json();
+    if(!arr.length){ el.textContent='暂无 index.html 提交记录'; return; }
+    const c=arr[0]; const d=new Date(c.commit.author.date);
+    const local=d.toLocaleString('zh-CN',{hour12:false});
+    el.innerHTML='当日快照/扩库刷新时间：<b>'+local+'</b><br><span class="kv">提交 '+c.sha.slice(0,7)+' · '+(c.commit.message||'').replace(/\n.*/,'')+'</span>';
+  }catch(e){ err.textContent='读取扩库时间失败：'+e.message+'（GitHub API 可能受限，可稍后重试）'; el.textContent=''; }
+}
+
+document.getElementById('kbSearch').addEventListener('input',e=>renderKB(e.target.value));
+document.getElementById('refresh').addEventListener('click',()=>{loadOrigins();loadKB();loadBuild();});
+
+loadOrigins(); loadKB(); loadBuild();
+</script>
+</body>
+</html>
