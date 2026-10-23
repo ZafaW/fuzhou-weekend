@@ -221,6 +221,10 @@
       <input id="amapKeyInput" placeholder="高德 Web 服务 Key（可选）：用于地址文字搜索">
       <span class="note">本文件已内置「共享 Key」，任何打开此文件的人都能直接用地图与实时检索，无需各自填写。如需用自己的 Key，可在此覆盖（仅存本机）。申请：高德开放平台 → 创建应用 → Web服务 Key。</span>
     </div>
+    <div class="syncrow">
+      <input id="ghTokenInput" type="password" placeholder="可选：GitHub 令牌（ghp_ / github_pat_），用于把起点同步到每日检索">
+      <span class="note">粘贴一个对 <code>zafaw/fuzhou-weekend</code> 仓库有 write 权限的令牌，保存起点时会自动写回 <code>origins.json</code>，每日 08:00 任务即可按所有起点 80km 扩库。留空则起点仅本机记忆。令牌只存本机浏览器 localStorage，不会出现在文件源码里（GitHub 会拦截明文令牌）。<a href="https://github.com/settings/tokens" target="_blank" rel="noopener">申请令牌</a></span>
+    </div>
     <div class="updaterow">
       <label>🔍 搜索距离区间</label>
       <input id="minKmInput" type="number" min="0" max="80" step="5" value="0" style="width:58px;"> – <input id="maxKmInput" type="number" min="0" max="80" step="5" value="30" style="width:58px;"> <span class="note">km（最小 0 · 最大 80；默认 0–30，清单显示上限 80）</span>
@@ -1636,9 +1640,57 @@ function loadState(){
   try{const d=JSON.parse(localStorage.getItem('fz_dist')); if(d&&typeof d.min==='number'&&typeof d.max==='number'){minKm=Math.max(0,Math.min(80,d.min));maxKm=Math.max(minKm,Math.min(80,d.max));}}catch(e){}
   try{const kn=JSON.parse(localStorage.getItem('fz_knownNew')); if(Array.isArray(kn))knownNew=new Set(kn);}catch(e){}
 }
-function saveStarts(){try{localStorage.setItem('fz_starts',JSON.stringify(savedStarts));}catch(e){}}
+function saveStarts(){try{localStorage.setItem('fz_starts',JSON.stringify(savedStarts));}catch(e){} try{syncOrigins();}catch(e){}}
 function saveAge(){try{localStorage.setItem('fz_age',JSON.stringify({y:document.getElementById('ageY').value,m:document.getElementById('ageM').value}));}catch(e){}}
 function loadAge(){try{const v=JSON.parse(localStorage.getItem('fz_age'));if(v){document.getElementById('ageY').value=v.y;document.getElementById('ageM').value=v.m;}}catch(e){}}
+
+/* ===== 记录所有起点并同步到仓库（供每日按各起点 80km 扩库） ===== */
+const ORIGIN_REPO = { owner:'zafaw', repo:'fuzhou-weekend', branch:'main' };
+// 用于把「所有搜索过的起点」写回仓库、供每日 08:00 任务按各起点 80km 检索扩库。
+// 出于安全（GitHub 会拦截源码中的明文令牌），令牌不写死在文件里，而是由你在本机粘贴、
+// 存于 localStorage（gh_token）。留空则起点仅本机记忆，每日任务按仓库 origins.json（默认起点）扩库。
+// 用实时读取的函数（而非 const 捕获），确保你在页面里粘贴令牌后立即生效，无需刷新。
+function getOriginToken(){ try{ return localStorage.getItem('gh_token')||''; }catch(e){ return ''; } }
+const ORIGINS_RAW = 'https://raw.githubusercontent.com/'+ORIGIN_REPO.owner+'/'+ORIGIN_REPO.repo+'/'+ORIGIN_REPO.branch+'/origins.json';
+async function ghPutOrigin(body){
+  const tok=getOriginToken();
+  const r = await fetch('https://api.github.com/repos/'+ORIGIN_REPO.owner+'/'+ORIGIN_REPO.repo+'/contents/origins.json', {
+    method:'PUT', headers:{ 'Authorization':'Bearer '+tok, 'Accept':'application/vnd.github+json', 'Content-Type':'application/json', 'User-Agent':'fz-page' },
+    body: JSON.stringify(body)
+  });
+  return r;
+}
+async function syncOrigins(){
+  if(!getOriginToken()) return;
+  const data = { origins: savedStarts.map(s=>({name:s.name, lng:+s.lng.toFixed(6), lat:+s.lat.toFixed(6)})) };
+  if(!data.origins.length) return;
+  try{
+    let sha=null;
+    const tok=getOriginToken();
+    const meta = await fetch('https://api.github.com/repos/'+ORIGIN_REPO.owner+'/'+ORIGIN_REPO.repo+'/contents/origins.json?ref='+ORIGIN_REPO.branch, {headers:{'Authorization':'Bearer '+tok,'Accept':'application/vnd.github+json'}});
+    if(meta.ok){ const mj=await meta.json(); sha=mj.sha||null; }
+    const body={ message:'更新起点清单（页面同步）', content: btoa(unescape(encodeURIComponent(JSON.stringify(data,null,2)))), branch: ORIGIN_REPO.branch };
+    if(sha) body.sha=sha;
+    const r=await ghPutOrigin(body);
+    if(r.ok) document.getElementById('startInfo').textContent='已把所有起点同步到每日检索（共 '+data.origins.length+' 个）';
+    else document.getElementById('startInfo').textContent='起点云端同步失败（'+r.status+'），本机已保存';
+  }catch(e){ /* 网络/权限异常静默降级，本机记忆仍有效 */ }
+}
+// 页面加载时把仓库里已记录的起点合并进本机记忆（多设备 / 每日任务共享同一份起点）
+async function loadRepoOrigins(){
+  if(!getOriginToken()) return;
+  try{
+    const r=await fetch(ORIGINS_RAW+'?t='+Date.now()); if(!r.ok) return;
+    const j=await r.json(); if(!j||!Array.isArray(j.origins)) return;
+    let changed=false;
+    for(const o of j.origins){
+      if(!savedStarts.some(s=>s.name===o.name && Math.abs(s.lat-o.lat)<0.001 && Math.abs(s.lng-o.lng)<0.001)){
+        savedStarts.push({name:o.name, lat:+o.lat, lng:+o.lng}); changed=true;
+      }
+    }
+    if(changed){ saveStarts(); renderSaved(); }
+  }catch(e){}
+}
 
 /* ===== 筛选交互 ===== */
 document.querySelectorAll('.chips').forEach(g=>{
@@ -1676,6 +1728,17 @@ document.getElementById('amapKeyInput').addEventListener('change',e=>{
   try{localStorage.setItem('amapKey',e.target.value.trim());}catch(err){}
   document.getElementById('startInfo').textContent='高德Key已保存（本机），再次点「定位并更新」即可文字搜索';
 });
+// 同步令牌：粘贴后存本机 localStorage，随后保存起点即自动写回仓库 origins.json
+const _ghTok=document.getElementById('ghTokenInput');
+if(_ghTok){
+  try{ if(localStorage.getItem('gh_token')) _ghTok.value=localStorage.getItem('gh_token'); }catch(e){}
+  _ghTok.addEventListener('change',e=>{
+    const v=e.target.value.trim();
+    try{ if(v) localStorage.setItem('gh_token',v); else localStorage.removeItem('gh_token'); }catch(err){}
+    if(v){ document.getElementById('startInfo').textContent='同步令牌已保存（本机）。现在可点「＋ 保存当前」把起点写回每日检索'; }
+    else{ document.getElementById('startInfo').textContent='已清除同步令牌，起点仅本机记忆'; }
+  });
+}
 /* 搜索距离区间：改动即按新区间重新检索（区间即检索窗口，也是清单显示窗口） */
 function applyDistInputs(){
   let mn=Math.max(0,Math.min(80,parseInt(document.getElementById('minKmInput').value)||0));
@@ -1717,6 +1780,7 @@ function applyBackend(snap){
 
 /* ===== 初始化 ===== */
 loadState();
+loadRepoOrigins();      // 合并仓库里已记录的起点（多设备 / 每日任务共享）
 autoFillAge();          // 年龄按出生日期自动填入
 applyAge();
 updateToday();          // 顶部日期
