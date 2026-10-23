@@ -1796,8 +1796,18 @@ document.getElementById('amapKeyInput').addEventListener('change',e=>{
 });
 document.getElementById('minKmInput').addEventListener('change',applyDistInputs);
 document.getElementById('maxKmInput').addEventListener('change',applyDistInputs);
+// 搜索距离区间：改动即按新区间重新检索（区间即检索窗口，也是清单显示窗口）
+function applyDistInputs(){
+  let mn=Math.max(0,Math.min(80,parseInt(document.getElementById('minKmInput').value)||0));
+  let mx=Math.max(0,Math.min(80,parseInt(document.getElementById('maxKmInput').value)||80));
+  if(mn>mx){ [mn,mx]=[mx,mn]; }
+  minKm=mn; maxKm=mx;
+  document.getElementById('minKmInput').value=mn; document.getElementById('maxKmInput').value=mx;
+  saveState();
+  mergeLatestPlaces();   // 区间即检索窗口，改动后按新区间重新生成当日清单
+}
 // 若把本 HTML 放到别处（如本地双击）想读云端服务，把下面改成云端 /api/today 完整地址
-const BACKEND_URL='';   // 留空=同源 /api/today；例：'http://1.2.3.4:8787/api/today'
+const BACKEND_URL='https://a422398a5c853b9a6.app.workbuddy.host';   // 在线后端：清单检索走后端代理
 document.getElementById('mergeBtn').addEventListener('click', async ()=>{
   setDS('正在刷新实时清单…');
   try{ const r=await fetch(BACKEND_URL||'/api/refresh'); if(r.ok){ const d=await r.json(); if(d&&Array.isArray(d.pois)&&d.pois.length){ applyBackend(d); return; } } }catch(e){}
