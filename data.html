@@ -3,170 +3,505 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>福州带娃周末 · 数据查看台</title>
+<title>福州带娃周末 · 数据管理台</title>
 <style>
-  :root{ --bg:#f4f7fb; --card:#fff; --ink:#1f2a37; --sub:#6b7280; --line:#e5e9f0; --blue:#2f6df6; --green:#19a974; --amber:#e6a23c; --red:#e1533f; }
+  :root{ --bg:#f4f7fb; --card:#fff; --ink:#1f2a37; --sub:#6b7280; --line:#e5e9f0; --blue:#2f6df6; --green:#19a974; --amber:#e6a23c; --red:#e1533f; --purple:#8b5cf6; }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;}
-  .wrap{max-width:920px;margin:0 auto;padding:18px 14px 60px;}
-  header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px;}
+  .wrap{max-width:980px;margin:0 auto;padding:18px 14px 80px;}
+  header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px}
   h1{font-size:20px;margin:0}
-  h2{font-size:16px;margin:22px 0 10px;display:flex;align-items:center;gap:8px}
+  h2{font-size:16px;margin:20px 0 10px}
   .sub{color:var(--sub);font-size:13px}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 4px;border-bottom:1px solid var(--line);padding-bottom:0}
+  .tab{padding:9px 14px;border:1px solid transparent;border-bottom:none;border-radius:10px 10px 0 0;cursor:pointer;color:var(--sub);font-size:14px;background:transparent}
+  .tab.active{background:var(--card);color:var(--blue);border-color:var(--line);font-weight:600;margin-bottom:-1px}
   .btn{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:10px;padding:8px 14px;font-size:14px;cursor:pointer}
   .btn:hover{border-color:var(--blue);color:var(--blue)}
-  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:6px 0 4px}
-  .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
-  .stat .n{font-size:26px;font-weight:700}
-  .stat .l{color:var(--sub);font-size:12px;margin-top:2px}
+  .btn.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+  .btn.primary:hover{opacity:.9;color:#fff}
+  .btn.danger{color:var(--red);border-color:#f3c9c1}
+  .btn.danger:hover{background:#fdecec}
+  .btn.sm{padding:4px 10px;font-size:13px}
   .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:6px 0}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .stat .n{font-size:24px;font-weight:700}
+  .stat .l{color:var(--sub);font-size:12px;margin-top:2px}
   table{width:100%;border-collapse:collapse;font-size:14px}
   th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
   th{color:var(--sub);font-weight:600;font-size:12px}
   .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:12px;white-space:nowrap}
-  .b-manual{background:#e8f6ef;color:var(--green)}
-  .b-auto{background:#fdf3e3;color:var(--amber)}
+  .b-manual{background:#e8f6ef;color:var(--green)} .b-auto{background:#fdf3e3;color:var(--amber)}
   .b-empty{background:#fdecec;color:var(--red)}
-  input[type=search]{width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:14px;margin-bottom:10px}
-  .note{color:var(--sub);font-size:12px;margin-top:6px}
-  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  .kv{color:var(--sub)}
-  .u-clip{max-width:520px;color:#374151;font-size:13px}
+  .badge.cat{background:#eef2ff;color:var(--purple)}
+  input,select,textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:14px;font-family:inherit;margin-bottom:8px;background:#fff}
+  textarea{resize:vertical;min-height:80px}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .row>*{flex:1;min-width:120px}
+  .kv{color:var(--sub);font-size:13px}
+  .u-clip{max-width:420px;color:#374151;font-size:13px}
   .err{color:var(--red);font-size:13px}
-  a{color:var(--blue);text-decoration:none}
+  .ok{color:var(--green);font-size:13px}
+  .note{color:var(--sub);font-size:12px;margin-top:6px}
   .pill{font-size:12px;color:var(--sub);border:1px solid var(--line);border-radius:20px;padding:2px 10px}
+  .bar{height:14px;border-radius:7px;background:var(--blue);min-width:2px}
+  .barwrap{display:flex;align-items:center;gap:8px;margin:5px 0}
+  .barwrap .lab{width:96px;font-size:13px;color:var(--ink)}
+  .barwrap .val{width:34px;font-size:12px;color:var(--sub);text-align:right}
+  .folder{cursor:pointer;padding:6px 8px;border-radius:8px}
+  .folder:hover{background:#eef2ff}
+  .docfile{padding:6px 8px 6px 26px;border-radius:8px;cursor:pointer;display:flex;justify-content:space-between;gap:8px}
+  .docfile:hover{background:#f0f4ff}
+  .doccontent{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px;font-size:15px;line-height:1.8}
+  .doccontent h1{font-size:22px;margin:.2em 0 .4em} .doccontent h2{font-size:18px;margin:1em 0 .3em;color:var(--blue)}
+  .doccontent h3{font-size:16px;margin:.8em 0 .3em} .doccontent blockquote{margin:.6em 0;padding:.4em 1em;background:#f6f8fc;border-left:4px solid var(--blue);color:var(--sub)}
+  .doccontent a{color:var(--blue)} .doccontent pre{background:#0f172a;color:#e2e8f0;padding:12px;border-radius:8px;overflow:auto}
+  .doccontent code{background:#eef2ff;padding:1px 5px;border-radius:4px;font-size:13px}
+  .doccontent ul,.doccontent ol{margin:.4em 0;padding-left:1.4em}
+  .modal{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;z-index:50;padding:14px}
+  .modal.show{display:flex}
+  .sheet{background:#fff;border-radius:16px;padding:18px;width:min(560px,100%);max-height:90vh;overflow:auto}
+  .sheet h3{margin:0 0 12px}
+  .toast{position:fixed;left:50%;top:14px;transform:translateX(-50%);background:#0f172a;color:#fff;padding:10px 18px;border-radius:24px;font-size:14px;z-index:99;opacity:0;transition:.25s;pointer-events:none}
+  .toast.show{opacity:1}
+  .hidden{display:none!important}
+  .pinbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <div>
-      <h1>福州带娃周末 · 数据查看台</h1>
-      <div class="sub">云端起点 · 知识库 · 扩库状态（实时读取已部署数据）</div>
+      <h1>福州带娃周末 · 数据管理台</h1>
+      <div class="sub">云端起点 · 知识库 · 文档库 · 数据分析（实时读写 GitHub 仓库）</div>
     </div>
-    <div class="row">
+    <div class="row" style="flex:0">
       <a class="btn" href="./index.html">↩ 返回指南</a>
       <button class="btn" id="refresh">🔄 刷新</button>
     </div>
   </header>
 
-  <h2>📍 云端起点（多起点扩库来源）</h2>
-  <div class="card">
-    <div id="originsStat" class="sub">读取中…</div>
-    <table id="originsTable" style="display:none">
-      <thead><tr><th>名称</th><th>坐标(WGS84)</th></tr></thead>
-      <tbody id="originsBody"></tbody>
-    </table>
-    <div id="originsErr" class="err"></div>
-    <div class="note">来源：在线后端 <code>/api/origins</code>（每次读取 GitHub 最新）。保存新起点后这里会实时出现；每日 08:00 任务会围绕这些起点 80km 检索扩库。</div>
+  <div id="pinBox" class="card pinbar hidden">
+    <span class="pill">管理 PIN</span>
+    <input id="pinInput" style="flex:1;min-width:120px" placeholder="输入管理 PIN 以启用增删改（默认 fz2026）">
+    <button class="btn primary sm" id="pinSave">解锁</button>
+    <span class="sub">写操作（增/删/改起点、知识库、文档）需要 PIN。</span>
   </div>
 
-  <h2>📚 知识库 SPOT_NOTES（地点攻略）</h2>
-  <div class="cards" id="kbStats"></div>
-  <div class="card">
-    <input type="search" id="kbSearch" placeholder="搜索地点名 / 攻略关键词…">
-    <table>
-      <thead><tr><th>地点</th><th>类型</th><th>攻略(u) 摘要</th></tr></thead>
-      <tbody id="kbBody"></tbody>
-    </table>
-    <div id="kbErr" class="err"></div>
-    <div class="note">来源：实时解析已部署 <code>index.html</code> 里的 <code>SPOT_NOTES</code>。「自动」= 每日任务按类型自动生成（仍可进一步打磨），「人工」= 精修完成。</div>
+  <div class="tabs">
+    <div class="tab active" data-tab="origins">📍 起点</div>
+    <div class="tab" data-tab="kb">📚 知识库</div>
+    <div class="tab" data-tab="docs">📄 文档库</div>
+    <div class="tab" data-tab="stats">📊 分析</div>
   </div>
 
-  <h2>🕒 扩库状态</h2>
-  <div class="card">
-    <div id="buildStat" class="sub">读取中…</div>
-    <div id="buildErr" class="err"></div>
-    <div class="note">来源：GitHub 上 <code>index.html</code> 最后一次提交时间 = 当日快照/扩库刷新时间（每日 08:00 定时任务写入）。</div>
+  <!-- 起点 -->
+  <section id="tab-origins" class="tabpane">
+    <h2>📍 云端起点（多起点扩库来源）</h2>
+    <div class="card">
+      <div id="originsStat" class="sub">读取中…</div>
+      <table id="originsTable" style="display:none">
+        <thead><tr><th>名称</th><th>坐标(WGS84)</th><th>操作</th></tr></thead>
+        <tbody id="originsBody"></tbody>
+      </table>
+      <div id="originsErr" class="err"></div>
+      <div class="note">来源：后端 <code>/api/origins</code>。每日 08:00 任务会围绕这些起点各 80km 检索扩库。当前为空则只按默认农林大学检索。</div>
+    </div>
+    <div class="card">
+      <h3 style="margin:0 0 8px;font-size:15px">➕ 新增起点（名称 → 自动地理编码）</h3>
+      <div class="row">
+        <input id="newOriginName" placeholder="地点名，如：东街口 / 三坊七巷 / 宝龙广场">
+        <button class="btn primary" id="addOrigin" style="flex:0">保存起点</button>
+      </div>
+      <div id="addOriginMsg" class="note"></div>
+    </div>
+  </section>
+
+  <!-- 知识库 -->
+  <section id="tab-kb" class="tabpane hidden">
+    <h2>📚 知识库 SPOT_NOTES（地点攻略）</h2>
+    <div class="cards" id="kbStats"></div>
+    <div class="card">
+      <div class="row">
+        <input type="search" id="kbSearch" placeholder="搜索地点名 / 攻略关键词…">
+        <select id="kbCat" style="flex:0;min-width:130px"><option value="">全部分类</option></select>
+        <button class="btn primary" id="kbAddBtn" style="flex:0">＋ 新增条目</button>
+      </div>
+      <table>
+        <thead><tr><th>地点</th><th>分类</th><th>攻略(u) 摘要</th><th>操作</th></tr></thead>
+        <tbody id="kbBody"></tbody>
+      </table>
+      <div id="kbErr" class="err"></div>
+      <div class="note">来源：后端 <code>/api/kb</code>（服务端代理，无跨域问题）。编辑/删除会同时写回模板与线上页面；新增条目即时进入知识库并参与每日扩库。</div>
+    </div>
+  </section>
+
+  <!-- 文档库 -->
+  <section id="tab-docs" class="tabpane hidden">
+    <h2>📄 文档库 docs/（规范资料库）</h2>
+    <div class="card">
+      <div class="row">
+        <button class="btn primary" id="docNewBtn">＋ 新建文档</button>
+        <button class="btn" id="docImportBtn">🌐 从网页导入</button>
+        <button class="btn" id="docSyncBtn">🔄 从知识库重建全部</button>
+      </div>
+      <div id="docMsg" class="note"></div>
+    </div>
+    <div class="card">
+      <div class="row">
+        <div style="flex:0 0 220px">
+          <div id="docTree" class="kv">读取中…</div>
+        </div>
+        <div style="flex:1">
+          <div id="docView" class="doccontent">从左侧选择文档查看；或新建/导入。</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 分析 -->
+  <section id="tab-stats" class="tabpane hidden">
+    <h2>📊 数据分析</h2>
+    <div class="cards" id="statCards"></div>
+    <div class="card">
+      <h3 style="margin:0 0 8px;font-size:15px">知识库 · 分类分布</h3>
+      <div id="catBars"></div>
+    </div>
+    <div class="card">
+      <h3 style="margin:0 0 8px;font-size:15px">文档库 · 各分类文件数</h3>
+      <div id="docBars"></div>
+    </div>
+    <div class="card">
+      <h3 style="margin:0 0 8px;font-size:15px">扩库状态</h3>
+      <div id="buildStat" class="kv">读取中…</div>
+    </div>
+  </section>
+</div>
+
+<!-- 知识库编辑弹窗 -->
+<div class="modal" id="kbModal">
+  <div class="sheet">
+    <h3 id="kbModalTitle">新增知识库条目</h3>
+    <input id="kbM_name" placeholder="地点名称（必填）">
+    <textarea id="kbM_u" placeholder="玩法推荐 u（必填）：怎么玩、看点、适合月龄/年龄、耗时"></textarea>
+    <textarea id="kbM_warn" placeholder="注意事项 warn：安全、门票、开放时间、避坑"></textarea>
+    <textarea id="kbM_food" placeholder="餐饮建议 food：自带/周边美食"></textarea>
+    <div class="row" style="margin-top:6px">
+      <button class="btn primary" id="kbM_save">保存</button>
+      <button class="btn" id="kbM_cancel">取消</button>
+    </div>
+    <div id="kbM_msg" class="note"></div>
   </div>
 </div>
+
+<!-- 文档编辑弹窗 -->
+<div class="modal" id="docModal">
+  <div class="sheet">
+    <h3 id="docModalTitle">新建文档</h3>
+    <input id="docM_title" placeholder="文档标题">
+    <input id="docM_cat" placeholder="分类文件夹（如：收集箱 / 攻略草稿）">
+    <textarea id="docM_content" style="min-height:240px" placeholder="文档正文（支持 Markdown：# 标题、**加粗**、- 列表、> 引用、[链接](url)）"></textarea>
+    <div class="row" style="margin-top:6px">
+      <button class="btn primary" id="docM_save">保存</button>
+      <button class="btn" id="docM_cancel">取消</button>
+    </div>
+    <div id="docM_msg" class="note"></div>
+  </div>
+</div>
+
+<!-- 导入弹窗 -->
+<div class="modal" id="impModal">
+  <div class="sheet">
+    <h3>🌐 从网页导入</h3>
+    <input id="imp_url" placeholder="网页链接 https://…（百度百科/维基等反爬站点可能失败）">
+    <input id="imp_title" placeholder="文档标题">
+    <input id="imp_cat" placeholder="分类文件夹（默认 收集箱）" value="收集箱">
+    <div class="note">后端抓取网页正文 → 去标签 → 转 Markdown 存入文档库。JS 渲染页或正文过短可能失败，建议手动复制后用「新建文档」。</div>
+    <div class="row" style="margin-top:6px">
+      <button class="btn primary" id="imp_save">导入</button>
+      <button class="btn" id="imp_cancel">取消</button>
+    </div>
+    <div id="imp_msg" class="note"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
 
 <script>
 const OWNER='ZafaW', REPO='fuzhou-weekend', BRANCH='main';
 const SHARE='?sharecode=AOKZ35Y2P7';
-const ORIGINS_API='https://a422398a5c853b9a6.app.workbuddy.host/api/origins'+SHARE;
-const INDEX_RAW='https://raw.githubusercontent.com/'+OWNER+'/'+REPO+'/'+BRANCH+'/index.html';
-const COMMITS_API='https://api.github.com/repos/'+OWNER+'/'+REPO+'/commits?path=index.html&per_page=1';
+const API='https://a422398a5c853b9a6.app.workbuddy.host';
+const ORIGINS_API=API+'/api/origins'+SHARE;
+const DOCS_API=API+'/api/docs'+SHARE;
+
+// —— 管理 PIN ——
+let ADMIN_PIN=localStorage.getItem('fz_admin_pin')||'';
+function ensurePin(msg){ if(ADMIN_PIN){ return true; } document.getElementById('pinBox').classList.remove('hidden'); toast(msg||'请先在上方输入管理 PIN'); return false; }
+function h(){ return ADMIN_PIN?{'x-admin-pin':ADMIN_PIN}:{}; }
 
 function esc(s){return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 function clip(s,n){s=String(s||'');return s.length>n?s.slice(0,n)+'…':s;}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200);}
+async function jget(u){const r=await fetch(u);return r.json();}
+async function jpost(u,body){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json',...h()},body:JSON.stringify(body)});return r.json();}
 
+// —— 知识库分类（与后端一致）——
+function kbCategory(name,note){const s=(name||'')+'|'+((note&&(note.u||note.warn))||'');
+  if(/图书馆|少儿阅读|绘本|书吧/.test(s))return '图书馆阅读';
+  if(/博物馆|科技馆|科普|展览|纪念馆|美术馆|规划馆/.test(s))return '博物馆科普';
+  if(/海洋|水族|海底|海世界|极地/.test(s))return '海洋水族';
+  if(/沙滩|海滨|海滩|浴场/.test(s))return '沙滩海滨';
+  if(/温泉/.test(s))return '温泉';
+  if(/动物园|动物乐园|萌宠|百鸟|野生动物|鸟语林/.test(s))return '动物园萌宠';
+  if(/乐园|游乐场|游乐园|欢乐世界/.test(s))return '乐园游乐';
+  if(/公园|湿地|绿地|郊野|森林公园|生态/.test(s))return '公园绿地';
+  if(/广场|街区|古厝|老街|小镇|古镇|历史|风情|古街/.test(s))return '广场街区';
+  return '其他目的地';}
+
+// ===== Tab 切换 =====
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.tabpane').forEach(x=>x.classList.add('hidden'));
+  t.classList.add('active');
+  document.getElementById('tab-'+t.dataset.tab).classList.remove('hidden');
+  if(t.dataset.tab==='origins')loadOrigins();
+  if(t.dataset.tab==='kb')loadKB();
+  if(t.dataset.tab==='docs')loadDocs();
+  if(t.dataset.tab==='stats')loadStats();
+}));
+document.getElementById('refresh').addEventListener('click',()=>{loadOrigins();loadKB();loadDocs();loadStats();});
+
+// ===== 起点 =====
 async function loadOrigins(){
-  const el=document.getElementById('originsStat');
-  const tbl=document.getElementById('originsTable');
-  const body=document.getElementById('originsBody');
-  const err=document.getElementById('originsErr');
-  err.textContent=''; tbl.style.display='none'; el.textContent='读取中…';
+  const el=document.getElementById('originsStat'),tbl=document.getElementById('originsTable'),body=document.getElementById('originsBody'),err=document.getElementById('originsErr');
+  err.textContent='';tbl.style.display='none';el.textContent='读取中…';
   try{
-    const r=await fetch(ORIGINS_API); const j=await r.json();
-    const list=j.origins||[];
-    if(!list.length){
-      el.innerHTML='<span class="badge b-empty">暂无起点</span> 云端当前没有记忆起点（多起点扩库暂未生效）。在指南页保存起点后会显示在此。';
-      return;
-    }
+    const j=await jget(ORIGINS_API);const list=j.origins||[];
+    if(!list.length){el.innerHTML='<span class="badge b-empty">暂无起点</span> 云端当前没有记忆起点（多起点扩库暂未生效）。保存起点后会显示在此。';return;}
     el.innerHTML='共 <b>'+list.length+'</b> 个记忆起点（每日任务围绕这些起点 80km 扩库）：';
-    body.innerHTML=list.map(o=>'<tr><td>'+esc(o.name)+'</td><td class="kv">'+(o.lat!=null?('lat '+o.lat+', lng '+o.lng):'—')+'</td></tr>').join('');
+    body.innerHTML=list.map(o=>'<tr><td>'+esc(o.name)+'</td><td class="kv">'+(o.lat!=null?('lat '+o.lat+', lng '+o.lng):'—')+'</td><td><button class="btn danger sm" data-del="'+esc(o.name)+'">删除</button></td></tr>').join('');
     tbl.style.display='table';
-  }catch(e){ err.textContent='读取起点失败：'+e.message+'（可能是网络或后端离线）'; el.textContent=''; }
+    body.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',async()=>{
+      if(!ensurePin('删除起点需要 PIN'))return;
+      if(!confirm('确认删除起点「'+b.dataset.del+'」？'))return;
+      const r=await jpost(API+'/api/delete-origin'+SHARE,{name:b.dataset.del});
+      if(r.ok){toast('已删除');loadOrigins();}else toast('失败：'+r.error);
+    }));
+  }catch(e){err.textContent='读取起点失败：'+e.message;el.textContent='';}
 }
+document.getElementById('addOrigin').addEventListener('click',async()=>{
+  if(!ensurePin('保存起点需要 PIN'))return;
+  const name=document.getElementById('newOriginName').value.trim();
+  const msg=document.getElementById('addOriginMsg');msg.textContent='地理编码中…';
+  if(!name){msg.textContent='请输入地点名';return;}
+  try{
+    const g=await fetch(API+'/api/geocode'+SHARE+'&address='+encodeURIComponent(name)).then(r=>r.json());
+    if(!g.ok){msg.textContent='地理编码失败：'+(g.error||'');return;}
+    const [lng,lat]=g.location.split(',').map(Number);
+    const r=await jpost(API+'/api/save-origins'+SHARE,{origins:[{name,lat,lng}]});
+    if(r.ok){msg.className='ok';msg.textContent='✅ 已保存（共 '+r.total+' 个起点）';document.getElementById('newOriginName').value='';loadOrigins();}
+    else{msg.textContent='保存失败：'+r.error;}
+  }catch(e){msg.textContent='失败：'+e.message;}
+});
 
+// ===== 知识库 =====
+let KB={}, KB_ROWS=[];
 async function loadKB(){
-  const stats=document.getElementById('kbStats');
-  const body=document.getElementById('kbBody');
-  const err=document.getElementById('kbErr');
-  err.textContent=''; stats.innerHTML='读取中…'; body.innerHTML='';
-  let obj=null;
+  const stats=document.getElementById('kbStats'),body=document.getElementById('kbBody'),err=document.getElementById('kbErr'),cat=document.getElementById('kbCat');
+  err.textContent='';stats.innerHTML='读取中…';body.innerHTML='';
   try{
-    const r=await fetch(INDEX_RAW); const html=await r.text();
-    const m=html.match(/const SPOT_NOTES=\{([\s\S]*?)\n\};/);
-    if(!m){ throw new Error('未找到 SPOT_NOTES'); }
-    obj=new Function('return {'+m[1]+'}')();
-  }catch(e){ err.textContent='读取知识库失败：'+e.message; stats.innerHTML=''; return; }
-  const keys=Object.keys(obj);
-  const manual=keys.filter(k=>!obj[k]._auto);
-  const auto=keys.filter(k=>obj[k]._auto);
-  stats.innerHTML=
-    '<div class="stat"><div class="n">'+keys.length+'</div><div class="l">地点总数</div></div>'+
-    '<div class="stat"><div class="n" style="color:var(--green)">'+manual.length+'</div><div class="l">人工精修</div></div>'+
-    '<div class="stat"><div class="n" style="color:var(--amber)">'+auto.length+'</div><div class="l">自动生成</div></div>';
-  const rows=keys.map(k=>({k,v:obj[k]})).sort((a,b)=>{
-    const am=!a.v._auto, bm=!b.v._auto; if(am!==bm)return bm-am; return a.k.localeCompare(b.k,'zh');
-  });
-  window.__rows=rows;
-  renderKB('');
+    const j=await jget(API+'/api/kb'+SHARE);
+    if(!j.ok){err.textContent='读取知识库失败：'+j.error;stats.innerHTML='';return;}
+    KB=j.notes||{};
+    const keys=Object.keys(KB);
+    const auto=keys.filter(k=>KB[k]._auto);
+    stats.innerHTML=
+      '<div class="stat"><div class="n">'+keys.length+'</div><div class="l">地点总数</div></div>'+
+      '<div class="stat"><div class="n" style="color:var(--green)">'+(keys.length-auto.length)+'</div><div class="l">已精修</div></div>'+
+      '<div class="stat"><div class="n" style="color:var(--amber)">'+auto.length+'</div><div class="l">自动生成</div></div>'+
+      '<div class="stat"><div class="n" style="color:var(--purple)">'+(j.snapshot&&j.snapshot.count||'-')+'</div><div class="l">当日快照POI</div></div>';
+    KB_ROWS=keys.map(k=>({k,v:KB[k],cat:kbCategory(k,KB[k])}));
+    // 分类下拉
+    const cats=[...new Set(KB_ROWS.map(r=>r.cat))].sort();
+    cat.innerHTML='<option value="">全部分类</option>'+cats.map(c=>'<option value="'+esc(c)+'">'+esc(c)+'</option>').join('');
+    renderKB('','');
+  }catch(e){err.textContent='读取知识库失败：'+e.message;stats.innerHTML='';}
 }
-
-function renderKB(q){
-  const rows=window.__rows||[];
+function renderKB(q,catf){
   const body=document.getElementById('kbBody');
-  const f=q.trim();
-  const flt=!f?rows:rows.filter(r=>r.k.includes(f)||(r.v.u||'').includes(f)||(r.v.warn||'').includes(f)||(r.v.food||'').includes(f));
-  if(!flt.length){ body.innerHTML='<tr><td colspan="3" class="kv">无匹配</td></tr>'; return; }
+  const flt=KB_ROWS.filter(r=>{
+    const hit=!q||r.k.includes(q)||(r.v.u||'').includes(q)||(r.v.warn||'').includes(q)||(r.v.food||'').includes(q);
+    const catOk=!catf||r.cat===catf;
+    return hit&&catOk;
+  }).sort((a,b)=>a.k.localeCompare(b.k,'zh'));
+  if(!flt.length){body.innerHTML='<tr><td colspan="4" class="kv">无匹配</td></tr>';return;}
   body.innerHTML=flt.map(r=>{
-    const badge=r.v._auto?'<span class="badge b-auto">自动</span>':'<span class="badge b-manual">人工</span>';
-    return '<tr><td>'+esc(r.k)+'</td><td>'+badge+'</td><td class="u-clip">'+esc(clip(r.v.u,80))+'</td></tr>';
+    const badge=r.v._auto?'<span class="badge b-auto">自动</span>':'<span class="badge b-manual">精修</span>';
+    return '<tr><td>'+esc(r.k)+'</td><td><span class="badge cat">'+esc(r.cat)+'</span></td><td class="u-clip">'+esc(clip(r.v.u,70))+'</td>'+
+      '<td><button class="btn sm" data-edit="'+esc(r.k)+'">编辑</button> <button class="btn danger sm" data-del2="'+esc(r.k)+'">删除</button></td></tr>';
   }).join('');
+  body.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',()=>openKbModal(b.dataset.edit)));
+  body.querySelectorAll('[data-del2]').forEach(b=>b.addEventListener('click',async()=>{
+    if(!ensurePin('删除条目需要 PIN'))return;
+    if(!confirm('确认删除知识库条目「'+b.dataset.del2+'」？同时会更新线上页面'))return;
+    const r=await jpost(API+'/api/kb-delete'+SHARE,{name:b.dataset.del2});
+    if(r.ok){toast('已删除');loadKB();}else toast('失败：'+r.error);
+  }));
 }
+document.getElementById('kbSearch').addEventListener('input',e=>renderKB(e.target.value,document.getElementById('kbCat').value));
+document.getElementById('kbCat').addEventListener('change',e=>renderKB(document.getElementById('kbSearch').value,e.target.value));
+document.getElementById('kbAddBtn').addEventListener('click',()=>{if(ensurePin('新增条目需要 PIN'))openKbModal(null);});
 
-async function loadBuild(){
-  const el=document.getElementById('buildStat');
-  const err=document.getElementById('buildErr');
-  err.textContent=''; el.textContent='读取中…';
+function openKbModal(name){
+  const isEdit=!!name;document.getElementById('kbModalTitle').textContent=isEdit?'编辑：'+name:'新增知识库条目';
+  const v=isEdit?KB[name]:{u:'',warn:'',food:''};
+  document.getElementById('kbM_name').value=isEdit?name:'';document.getElementById('kbM_name').readOnly=isEdit;
+  document.getElementById('kbM_u').value=v.u||'';document.getElementById('kbM_warn').value=v.warn||'';document.getElementById('kbM_food').value=v.food||'';
+  document.getElementById('kbM_msg').textContent='';
+  document.getElementById('kbModal').classList.add('show');
+}
+document.getElementById('kbM_cancel').addEventListener('click',()=>document.getElementById('kbModal').classList.remove('show'));
+document.getElementById('kbM_save').addEventListener('click',async()=>{
+  const name=document.getElementById('kbM_name').value.trim();
+  const u=document.getElementById('kbM_u').value.trim();
+  const msg=document.getElementById('kbM_msg');
+  if(!name||!u){msg.textContent='名称和玩法 u 为必填';return;}
+  const r=await jpost(API+'/api/kb-save'+SHARE,{name,u,warn:document.getElementById('kbM_warn').value.trim(),food:document.getElementById('kbM_food').value.trim(),_isNew:!KB[name]});
+  if(r.ok){toast('已保存');document.getElementById('kbModal').classList.remove('show');loadKB();}
+  else msg.textContent='失败：'+(r.results?JSON.stringify(r.results):r.error);
+});
+
+// ===== 文档库 =====
+let DOC_TREE=[];
+async function loadDocs(){
+  const tree=document.getElementById('docTree');tree.textContent='读取中…';
   try{
-    const r=await fetch(COMMITS_API);
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    const arr=await r.json();
-    if(!arr.length){ el.textContent='暂无 index.html 提交记录'; return; }
-    const c=arr[0]; const d=new Date(c.commit.author.date);
-    const local=d.toLocaleString('zh-CN',{hour12:false});
-    el.innerHTML='当日快照/扩库刷新时间：<b>'+local+'</b><br><span class="kv">提交 '+c.sha.slice(0,7)+' · '+(c.commit.message||'').replace(/\n.*/,'')+'</span>';
-  }catch(e){ err.textContent='读取扩库时间失败：'+e.message+'（GitHub API 可能受限，可稍后重试）'; el.textContent=''; }
+    const j=await jget(DOCS_API);DOC_TREE=j.docs||[];
+    renderTree();
+  }catch(e){tree.innerHTML='<span class="err">读取失败：'+e.message+'</span>';}
 }
+function renderTree(){
+  const tree=document.getElementById('docTree');
+  const byCat={};DOC_TREE.forEach(d=>{const parts=d.path.split('/');const c=parts[1]||'(根)';(byCat[c]=byCat[c]||[]).push(d);});
+  let html='';
+  Object.keys(byCat).sort().forEach(c=>{
+    html+='<div class="folder" data-cat="'+esc(c)+'">📁 '+esc(c)+' <span class="kv">('+byCat[c].length+')</span></div>';
+    html+='<div id="cat-'+esc(c)+'" style="display:none">';
+    byCat[c].sort((a,b)=>a.path.localeCompare(b.path,'zh')).forEach(d=>{
+      const nm=d.path.split('/').slice(2).join('/');
+      html+='<div class="docfile" data-path="'+esc(d.path)+'"><span>📄 '+esc(nm)+'</span><button class="btn danger sm docdel" data-path="'+esc(d.path)+'">删</button></div>';
+    });
+    html+='</div>';
+  });
+  tree.innerHTML=html||'<span class="kv">暂无文档</span>';
+  tree.querySelectorAll('.folder').forEach(f=>f.addEventListener('click',()=>{const id='cat-'+f.dataset.cat;const e=document.getElementById(id);e.style.display=e.style.display==='none'?'block':'none';}));
+  tree.querySelectorAll('.docfile').forEach(f=>f.addEventListener('click',e=>{if(e.target.classList.contains('docdel'))return;openDoc(f.dataset.path);}));
+  tree.querySelectorAll('.docdel').forEach(b=>b.addEventListener('click',async()=>{
+    if(!ensurePin('删除文档需要 PIN'))return;
+    if(!confirm('确认删除文档 '+b.dataset.path+'？'))return;
+    const r=await jpost(API+'/api/doc-delete'+SHARE,{path:b.dataset.path});
+    if(r.ok){toast('已删除');loadDocs();}else toast('失败：'+r.error);
+  }));
+}
+async function openDoc(path){
+  const view=document.getElementById('docView');view.innerHTML='读取中…';
+  try{
+    const j=await jget(API+'/api/doc'+SHARE+'&path='+encodeURIComponent(path));
+    if(!j.ok){view.innerHTML='<span class="err">'+esc(j.error)+'</span>';return;}
+    view.innerHTML=mdToHtml(j.content);
+  }catch(e){view.innerHTML='<span class="err">'+esc(e.message)+'</span>';}
+}
+// —— 极简 Markdown 渲染 ——
+function mdToHtml(md){
+  md=esc(md);
+  const lines=md.split(/\r?\n/);let html='',inUl=false,inOl=false;
+  const closeUl=()=>{if(inUl){html+='</ul>';inUl=false;}};const closeOl=()=>{if(inOl){html+='</ol>';inOl=false;}};
+  for(let ln of lines){
+    if(/^\s*###\s+/.test(ln)){closeUl();closeOl();html+='<h3>'+inline(ln.replace(/^\s*###\s+/,''))+'</h3>';}
+    else if(/^\s*##\s+/.test(ln)){closeUl();closeOl();html+='<h2>'+inline(ln.replace(/^\s*##\s+/,''))+'</h2>';}
+    else if(/^\s*#\s+/.test(ln)){closeUl();closeOl();html+='<h1>'+inline(ln.replace(/^\s*#\s+/,''))+'</h1>';}
+    else if(/^\s*>\s?/.test(ln)){closeUl();closeOl();html+='<blockquote>'+inline(ln.replace(/^\s*>\s?/,''))+'</blockquote>';}
+    else if(/^\s*[-*]\s+/.test(ln)){closeOl();if(!inUl){html+='<ul>';inUl=true;}html+='<li>'+inline(ln.replace(/^\s*[-*]\s+/,''))+'</li>';}
+    else if(/^\s*\d+\.\s+/.test(ln)){closeUl();if(!inOl){html+='<ol>';inOl=true;}html+='<li>'+inline(ln.replace(/^\s*\d+\.\s+/,''))+'</li>';}
+    else if(/^\s*$/.test(ln)){closeUl();closeOl();}
+    else {closeUl();closeOl();html+='<p>'+inline(ln)+'</p>';}
+  }
+  closeUl();closeOl();
+  return html;
+}
+function inline(s){return s.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank">$1</a>');}
 
-document.getElementById('kbSearch').addEventListener('input',e=>renderKB(e.target.value));
-document.getElementById('refresh').addEventListener('click',()=>{loadOrigins();loadKB();loadBuild();});
+document.getElementById('docNewBtn').addEventListener('click',()=>{if(!ensurePin('新建文档需要 PIN'))return;document.getElementById('docModalTitle').textContent='新建文档';document.getElementById('docM_title').value='';document.getElementById('docM_cat').value='';document.getElementById('docM_content').value='';document.getElementById('docM_msg').textContent='';document.getElementById('docModal').classList.add('show');});
+document.getElementById('docM_cancel').addEventListener('click',()=>document.getElementById('docModal').classList.remove('show'));
+document.getElementById('docM_save').addEventListener('click',async()=>{
+  const title=document.getElementById('docM_title').value.trim();
+  const cat=document.getElementById('docM_cat').value.trim().replace(/[\/\\]/g,'-')||'未分类';
+  const content=document.getElementById('docM_content').value;
+  const msg=document.getElementById('docM_msg');
+  if(!title){msg.textContent='请填写标题';return;}
+  const fname=title.replace(/[\/\\:*?"<>|\s#]+/g,'-').slice(0,60)||('doc-'+Date.now());
+  const r=await jpost(API+'/api/doc-save'+SHARE,{path:'docs/'+cat+'/'+fname+'.md',content:content,message:'文档保存：'+title+'（数据台）'});
+  if(r.ok){toast('已保存');document.getElementById('docModal').classList.remove('show');loadDocs();}else msg.textContent='失败：'+r.error;
+});
+document.getElementById('docImportBtn').addEventListener('click',()=>{if(!ensurePin('导入需要 PIN'))return;document.getElementById('imp_url').value='';document.getElementById('imp_title').value='';document.getElementById('imp_cat').value='收集箱';document.getElementById('imp_msg').textContent='';document.getElementById('impModal').classList.add('show');});
+document.getElementById('imp_cancel').addEventListener('click',()=>document.getElementById('impModal').classList.remove('show'));
+document.getElementById('imp_save').addEventListener('click',async()=>{
+  const url=document.getElementById('imp_url').value.trim();
+  const title=document.getElementById('imp_title').value.trim();
+  const cat=document.getElementById('imp_cat').value.trim()||'收集箱';
+  const msg=document.getElementById('imp_msg');
+  if(!/^https?:\/\//.test(url)||!title){msg.textContent='请填写合法的链接与标题';return;}
+  msg.textContent='抓取中（最多 15 秒）…';
+  const r=await jpost(API+'/api/doc-import'+SHARE,{url,title,category:cat});
+  if(r.ok){toast('已导入：'+r.path);document.getElementById('impModal').classList.remove('show');loadDocs();}else msg.textContent='失败：'+r.error;
+});
+document.getElementById('docSyncBtn').addEventListener('click',async()=>{
+  if(!ensurePin('重建需要 PIN'))return;
+  if(!confirm('将从知识库重建全部 docs/ 文档（约需 1-2 分钟，生成 '+Object.keys(KB).length+' 个地点文档 + README）。'))return;
+  document.getElementById('docMsg').textContent='重建中…（耗时约 1-2 分钟，请耐心等待）';
+  const r=await jpost(API+'/api/docs-sync'+SHARE,{});
+  if(r.ok){document.getElementById('docMsg').className='ok';document.getElementById('docMsg').textContent='✅ 已生成 '+r.files+' 个文件，提交 '+r.commit+'。可在 GitHub 仓库 docs/ 查看。';loadDocs();}
+  else{document.getElementById('docMsg').className='err';document.getElementById('docMsg').textContent='失败：'+r.error;}
+});
 
-loadOrigins(); loadKB(); loadBuild();
+// ===== 分析 =====
+async function loadStats(){
+  const cards=document.getElementById('statCards');
+  const catBars=document.getElementById('catBars');
+  const docBars=document.getElementById('docBars');
+  const build=document.getElementById('buildStat');
+  cards.innerHTML='读取中…';catBars.innerHTML='';docBars.innerHTML='';build.textContent='读取中…';
+  try{
+    const [kb,jdocs]=await Promise.all([jget(API+'/api/kb'+SHARE),jget(DOCS_API)]);
+    const notes=kb.notes||{};const keys=Object.keys(notes);
+    const docs=jdocs.docs||[];
+    const cats={};keys.forEach(k=>{const c=kbCategory(k,notes[k]);cats[c]=(cats[c]||0)+1;});
+    const docCats={};docs.forEach(d=>{const p=d.path.split('/');const c=p[1]||'(根)';docCats[c]=(docCats[c]||0)+1;});
+    cards.innerHTML=
+      '<div class="stat"><div class="n">'+keys.length+'</div><div class="l">知识库地点</div></div>'+
+      '<div class="stat"><div class="n" style="color:var(--purple)">'+Object.keys(cats).length+'</div><div class="l">知识库分类</div></div>'+
+      '<div class="stat"><div class="n">'+docs.length+'</div><div class="l">文档库文件</div></div>'+
+      '<div class="stat"><div class="n" style="color:var(--green)">'+(kb.snapshot&&kb.snapshot.count||'-')+'</div><div class="l">当日快照POI</div></div>';
+    const max1=Math.max(1,...Object.values(cats));
+    catBars.innerHTML=Object.keys(cats).sort((a,b)=>cats[b]-cats[a]).map(c=>bar(c,cats[c],max1)).join('');
+    const max2=Math.max(1,...Object.values(docCats));
+    docBars.innerHTML=(docs.length?Object.keys(docCats).sort((a,b)=>docCats[b]-docCats[a]).map(c=>bar(c,docCats[c],max2)).join(''):'<span class="kv">暂无文档</span>');
+    const lc=kb.lastCommit;
+    build.innerHTML=lc?('index.html 最后提交：<b>'+new Date(lc.date).toLocaleString('zh-CN',{hour12:false})+'</b><br><span class="kv">'+lc.sha+' · '+esc(lc.message)+'</span><br><span class="kv">（每日 08:00 定时任务刷新当日快照）</span>'):'（无提交记录）';
+  }catch(e){cards.innerHTML='<span class="err">读取失败：'+e.message+'</span>';}
+}
+function bar(label,val,max){const w=Math.max(2,Math.round(val/max*100));return '<div class="barwrap"><span class="lab">'+esc(label)+'</span><span class="bar" style="width:'+w+'%"></span><span class="val">'+val+'</span></div>';}
+
+// —— PIN 设置 ——
+document.getElementById('pinSave').addEventListener('click',()=>{
+  const v=document.getElementById('pinInput').value.trim();if(!v){toast('请输入 PIN');return;}
+  ADMIN_PIN=v;localStorage.setItem('fz_admin_pin',v);
+  document.getElementById('pinBox').classList.add('hidden');toast('已解锁写操作');
+});
+
+// 初始加载
+loadOrigins();
 </script>
 </body>
 </html>
