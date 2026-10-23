@@ -3,12 +3,14 @@
 // 福州带娃周末出行 · 每日推送器（零依赖 Node，供平台 08:00 定时任务调用）
 // ---------------------------------------------------------------
 // 全程走 GitHub Contents API（无需 git clone）：
-//   1) 从仓库拉 build_snapshot.js + 模板 HTML（保证用最新版生成器）
-//   2) node build_snapshot.js 生成自包含 今日.html（内嵌当天高德 POI）
-//   3) 把 今日.html 写回仓库（存在则更新，不存在则新建）
-// 产物：index.html（稳定公开，经 htmlpreview.github.io / GitHub Pages 渲染为网页）
+//   1) 从仓库拉 build_snapshot.js + 模板 HTML（保证用最新版生成器与知识库）
+//   2) 复用 build_snapshot 的检索，得到「当日清单 POI」，与模板 SPOT_NOTES 比对
+//      → 知识库缺失的新地点：用高德 POI 信息自动生成基础攻略并入（标记 _auto，待人工精修）
+//      → 保证「每天确认已有 + 新搜索到的景点，且攻略不空缺」
+//   3) node build_snapshot.js 生成自包含 今日.html（内嵌当天高德 POI）
+//   4) 把 今日.html 写回仓库（index.html，经 GitHub Pages 渲染）
 // 用法：GITHUB_TOKEN=xxx OWNER=xxx REPO=xxx node run_daily.js
-// 依赖环境变量：GITHUB_TOKEN（细粒度 PAT，仅该仓库 contents:read&write）、OWNER、REPO
+// 依赖环境变量：GITHUB_TOKEN、OWNER、REPO
 
 const https = require('https');
 const fs = require('fs');
@@ -60,6 +62,7 @@ async function getFile(p, marker, tries){
   }
   return last;
 }
+function normName(n){ return (n||'').replace(/[（(][^()（）]*[)）]/g,'').trim(); }
 
 (async()=>{
   // 1) 拉生成器 + 模板
@@ -67,18 +70,51 @@ async function getFile(p, marker, tries){
   const tpl = await getFile('福州带娃周末出行.html','奇达村',6);
   if(!snap || !tpl){ console.error('[错] 仓库缺少 build_snapshot.js 或 福州带娃周末出行.html（模板），请先推送这两个文件'); process.exit(1); }
   fs.writeFileSync(path.join(TMP,'build_snapshot.js'), b64dec(snap.content));
-  fs.writeFileSync(path.join(TMP,'福州带娃周末出行.html'), b64dec(tpl.content));
-  console.log('[拉取] build_snapshot.js + 模板 就绪');
+  const tplHtml = b64dec(tpl.content);
+  fs.writeFileSync(path.join(TMP,'tpl.html'), tplHtml);
+  console.log('[拉取] build_snapshot.js + 模板(知识库) 就绪');
 
-  // 2) 生成自包含 HTML
+  // 2) 每日确认：检索当日清单 POI，与知识库比对，自动补全缺口
+  let patched = tplHtml, added = [], totalPoi = 0, autoCount = 0;
+  try{
+    const snapMod = require(path.join(TMP,'build_snapshot.js'));
+    const pois = await snapMod.refreshPOIs(30);   // 与页面默认清单同范围（0-30km 评分≥4.0）
+    totalPoi = pois.length;
+    const m = tplHtml.match(/(const SPOT_NOTES=\{[\s\S]*?\n\};)/);
+    const body = m ? m[1] : '';
+    const have = new Set((body.match(/'([^']+)':\{u:/g)||[]).map(s=>((s.match(/^'([^']+)':\{u:/)||[])[1]||'')).filter(Boolean));
+    const tail = [];
+    for(const p of pois){
+      const n = normName(p.name);
+      if(!n || have.has(n)) continue;
+      if([...have].some(h=>h.indexOf(n)>=0 || n.indexOf(h)>=0)) continue;   // 模糊去重
+      const r = (p.biz_ext && p.biz_ext.rating) || '';
+      const u = '高德检索到的带娃目的地（'+(p.type||'')+'），评分'+(r||'暂无')+'，位于'+(p.address||'')+'。具体玩法待人工补全。';
+      const warn = '信息基于高德，仅供参考；出行前请核实开放时间与票价。';
+      const food = '餐饮以'+(p.address||'当地')+'周边为准，建议地图搜索或自备。';
+      tail.push("  '"+n+"':{u:'"+u+"',warn:'"+warn+"',food:'"+food+"',_auto:true}");
+      added.push(n);
+    }
+    if(tail.length){
+      patched = tplHtml.replace(/(const SPOT_NOTES=\{[\s\S]*?\n\};)/, m0=>m0.replace(/\n\};/,"\n"+tail.join(",\n")+"\n};"));
+    }
+    fs.writeFileSync(path.join(TMP,'tpl_patched.html'), patched);
+    autoCount = added.length;
+    console.log('[确认] 当日清单 POI '+totalPoi+' 个；知识库已有 '+have.size+' 个；自动补全 '+added.length+' 个新地点攻略（_auto 待精修）'+(added.length?('：'+added.join('、')):''));
+  }catch(e){
+    fs.writeFileSync(path.join(TMP,'tpl_patched.html'), tplHtml);
+    console.error('[确认] 跳过自动补全：', e.message);
+  }
+
+  // 3) 生成自包含 HTML
   const outPath = path.join(TMP,'今日.html');
   try{
-    execFileSync('node', [path.join(TMP,'build_snapshot.js'), path.join(TMP,'福州带娃周末出行.html'), outPath], {stdio:'inherit', timeout:120000});
+    execFileSync('node', [path.join(TMP,'build_snapshot.js'), path.join(TMP,'tpl_patched.html'), outPath], {stdio:'inherit', timeout:150000});
   }catch(e){ console.error('[错] 生成失败', e.message); process.exit(1); }
   const content = b64enc(fs.readFileSync(outPath,'utf8'));
   console.log('[生成] 今日.html 大小 '+(fs.statSync(outPath).size/1024).toFixed(0)+'KB');
 
-  // 3) 写回仓库（更新或新建）。统一发布为 index.html（ASCII 文件名，便于 htmlpreview/githack/Pages 渲染）
+  // 4) 写回仓库（更新或新建）。统一发布为 index.html
   const existing = await getFile('index.html');
   const payload = { message:'每日快照 '+new Date().toISOString().slice(0,10), content, branch: BRANCH };
   if(existing && existing.sha) payload.sha = existing.sha;
@@ -87,4 +123,6 @@ async function getFile(p, marker, tries){
   const view = 'https://'+OWNER.toLowerCase()+'.github.io/'+REPO+'/';
   console.log('[完成] 已发布：'+raw);
   console.log('[查看] 渲染链接：'+view);
+  // 5) 完善度小结
+  console.log('[完善度] 当日 '+totalPoi+' 个地点均有攻略展示；其中 '+autoCount+' 个为自动生成，待人工精修（页面该地点攻略顶部标注「⚠️ 自动生成」）。');
 })().catch(e=>{ console.error('[失败]', e.message); process.exit(1); });
