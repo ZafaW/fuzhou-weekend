@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>安装「带娃指南」App</title>
+<link rel="icon" href="icon-192.png">
+<style>
+  :root{--primary:#2f8f83;--primary-light:#e6f4f1;--accent:#f2933c;--muted:#6b7c7a;--border:#dfe8e6;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    background:#f7f9f8;color:#233030;line-height:1.7;}
+  .hd{background:linear-gradient(135deg,var(--primary),#3aa897);color:#fff;padding:26px 22px;text-align:center;}
+  .hd img{width:74px;height:74px;border-radius:17px;margin-bottom:10px;box-shadow:0 6px 18px rgba(0,0,0,.2);}
+  .hd h1{margin:0;font-size:1.3rem;}
+  .hd p{margin:6px 0 0;font-size:.88rem;opacity:.93;}
+  .wrap{max-width:560px;margin:0 auto;padding:20px 16px 50px;}
+  .card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.04);}
+  .card h2{margin:0 0 12px;font-size:1.05rem;color:var(--primary);display:flex;align-items:center;gap:8px;}
+  .big{display:block;text-align:center;text-decoration:none;background:var(--primary);color:#fff;
+    border-radius:12px;padding:15px;font-size:1.05rem;font-weight:700;margin:4px 0 12px;}
+  .big:hover{background:#287a70;}
+  .big.alt{background:#fff;color:var(--primary);border:1.5px solid var(--primary);}
+  .steps{margin:0;padding-left:22px;}
+  .steps li{margin-bottom:10px;}
+  .note{background:#fff6ee;border:1px solid #f2d4bb;color:#9a4f1e;border-radius:10px;padding:11px 13px;font-size:.85rem;margin-top:12px;}
+  .tip{background:var(--primary-light);border-radius:10px;padding:11px 13px;font-size:.85rem;margin-top:12px;color:#2b6b64;}
+  .hide{display:none;}
+  .switch{text-align:center;font-size:.82rem;color:var(--muted);margin-top:6px;}
+  .switch a{color:var(--primary);margin:0 6px;text-decoration:underline;cursor:pointer;}
+  .ft{text-align:center;font-size:.76rem;color:var(--muted);margin-top:18px;}
+</style>
+</head>
+<body>
+  <div class="hd">
+    <img src="icon-192.png" alt="带娃指南">
+    <h1>安装「带娃指南」App</h1>
+    <p>福州带娃周末出行指南 · 装到桌面，一点就开</p>
+  </div>
+
+  <div class="wrap">
+    <!-- 安卓 -->
+    <div class="card hide" id="pAndroid">
+      <h2>🤖 检测到你是安卓手机</h2>
+      <a class="big" id="apkLink" href="https://github.com/ZafaW/fuzhou-weekend/releases/download/v1.0/fuzhou-guide-v1.0.apk">
+        ⬇️ 下载安装包（APK）
+      </a>
+      <div class="tip"><b>装完后：</b>桌面会出现「带娃指南」图标，点开就是独立窗口、没有地址栏，和 App 一样。内容是联网加载的，我更新网页后 App 里自动就是最新的，不用重装。</div>
+      <div class="note">⚠️ 安装时手机可能提示「未知来源应用 / 风险应用」——这是正常的，因为没上架应用商店。按提示<b>允许一次</b>即可安装（不同品牌路径略有不同，一般在「设置 → 安全 → 允许安装未知应用」）。</div>
+    </div>
+
+    <!-- iPhone / iPad -->
+    <div class="card hide" id="pIOS">
+      <h2>🍎 检测到你是 iPhone</h2>
+      <div class="note" style="margin-top:0">Apple 不允许 iPhone 直接下载安装包（必须走 App Store 审核），所以<b>没有可下载的 App</b>。但用下面的方法，效果几乎一样：桌面有图标、点开无地址栏、独立窗口。</div>
+      <ol class="steps">
+        <li>先点下面的按钮，<b>用 Safari 打开指南页</b>（必须 Safari，微信/QQ 里打开不行）</li>
+        <li>点屏幕<b>底部中间的「分享」按钮</b>（方框带向上箭头 ↑）</li>
+        <li>在菜单里往下划，选 <b>「添加到主屏幕」</b></li>
+        <li>右上角点「添加」→ 桌面出现「带娃指南」图标，搞定</li>
+      </ol>
+      <a class="big" href="https://zafaw.github.io/fuzhou-weekend/" target="_blank" rel="noopener">1️⃣ 用 Safari 打开指南页</a>
+      <div class="tip">💡 添加到主屏幕后，断网也能打开首页（内容已缓存），比下载的安装包还省心。</div>
+    </div>
+
+    <!-- 电脑 / 其他 -->
+    <div class="card hide" id="pOther">
+      <h2>💻 用电脑或其他设备</h2>
+      <a class="big" href="https://zafaw.github.io/fuzhou-weekend/" target="_blank" rel="noopener">🌐 打开网页版指南</a>
+      <div class="tip">用手机打开这个页面，会自动识别你的系统并给出对应的安装方式。</div>
+    </div>
+
+    <div class="switch">
+      识别不准？手动切换：
+      <a onclick="show('pAndroid')">安卓</a>·<a onclick="show('pIOS')">iPhone</a>·<a onclick="show('pOther')">电脑</a>
+    </div>
+    <div class="ft">网址：zafaw.github.io/fuzhou-weekend</div>
+  </div>
+
+<script>
+  var APK='https://github.com/ZafaW/fuzhou-weekend/releases/download/v1.0/fuzhou-guide-v1.0.apk';
+  document.getElementById('apkLink').href=APK;
+  function show(id){
+    ['pAndroid','pIOS','pOther'].forEach(function(k){
+      document.getElementById(k).classList.toggle('hide', k!==id);
+    });
+  }
+  (function(){
+    var ua=navigator.userAgent||'';
+    var isAndroid=/Android/i.test(ua);
+    var isIOS=/iPhone|iPad|iPod/i.test(ua)
+      || (/Macintosh/i.test(ua) && navigator.maxTouchPoints>1);
+    show(isAndroid?'pAndroid':(isIOS?'pIOS':'pOther'));
+  })();
+</script>
+</body>
+</html>
