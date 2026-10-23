@@ -14,6 +14,24 @@
   *{box-sizing:border-box;}
   body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);line-height:1.7;}
   .wrap{max-width:960px;margin:0 auto;padding:24px 18px 60px;}
+  /* —— 左侧目录边栏 —— */
+  html{scroll-behavior:smooth;}
+  .layout{display:flex;align-items:flex-start;gap:22px;max-width:1200px;margin:0 auto;padding:24px 18px 60px;}
+  .layout .wrap{flex:1 1 auto;max-width:none;margin:0;padding:0;min-width:0;}
+  .sidebar{flex:0 0 230px;width:230px;}
+  .side-inner{position:sticky;top:18px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 12px;box-shadow:0 2px 8px rgba(0,0,0,.03);}
+  .side-title{font-weight:800;color:var(--primary);font-size:1rem;margin:2px 6px 10px;display:flex;align-items:center;gap:6px;}
+  .toc{display:flex;flex-direction:column;gap:1px;}
+  .toc-link{display:block;padding:8px 10px;border-radius:9px;color:var(--text);text-decoration:none;font-size:.9rem;border-left:3px solid transparent;transition:.15s;line-height:1.4;}
+  .toc-link:hover{background:var(--primary-light);color:var(--primary);}
+  .toc-link.active{background:var(--primary-light);color:var(--primary);border-left-color:var(--accent);font-weight:700;}
+  .side-top{margin-top:12px;width:100%;border:1px solid var(--border);background:#fff;color:var(--muted);border-radius:9px;padding:8px;font-size:.84rem;cursor:pointer;transition:.15s;}
+  .side-top:hover{border-color:var(--primary);color:var(--primary);}
+  section{scroll-margin-top:16px;}
+  @media(max-width:880px){
+    .layout{flex-direction:column;padding:16px 12px 50px;gap:0;}
+    .sidebar{display:none;}
+  }
   header.hero{background:linear-gradient(135deg,var(--primary),#3aa897);color:#fff;border-radius:18px;padding:28px 26px;margin-bottom:22px;box-shadow:0 6px 20px rgba(47,143,131,.25);}
   header.hero h1{margin:0 0 6px;font-size:1.55rem;}
   header.hero p{margin:0;opacity:.95;font-size:.95rem;}
@@ -153,9 +171,27 @@
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="layout">
+  <aside class="sidebar">
+    <div class="side-inner">
+      <div class="side-title">📑 目录</div>
+      <nav class="toc">
+        <a class="toc-link" href="#top" data-target="top">👶 顶部</a>
+        <a class="toc-link" href="#filterSec" data-target="filterSec">🔎 智能筛选</a>
+        <a class="toc-link" href="#mapSec" data-target="mapSec">🗺️ 地图与起点</a>
+        <a class="toc-link" href="#hotSec" data-target="hotSec">🔥 每日热门</a>
+        <a class="toc-link" href="#sec-list" data-target="sec-list">📋 推荐清单</a>
+        <a class="toc-link" href="#sec-pack" data-target="sec-pack">🎒 装备清单</a>
+        <a class="toc-link" href="#sec-tips" data-target="sec-tips">💡 实操细节</a>
+        <a class="toc-link" href="#sec-decide" data-target="sec-decide">⚡ 快速决策</a>
+        <a class="toc-link" href="#sec-history" data-target="sec-history">🕑 历史推荐</a>
+      </nav>
+      <button class="side-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑ 回到顶部</button>
+    </div>
+  </aside>
+  <div class="wrap">
 
-  <header class="hero">
+  <header class="hero" id="top">
     <h1>🍼 福州带娃周末出行指南</h1>
     <p id="todayDate" style="margin:0 0 6px;font-size:.9rem;opacity:.95;"></p>
     <p>宝宝
@@ -246,7 +282,7 @@
   </section>
 
   <!-- 推荐清单 -->
-  <section>
+  <section id="sec-list">
     <h2>一、周末出行推荐清单（共 <span id="placeCount">22</span> 个）</h2>
     <div class="note" style="margin-bottom:12px;">"距起点"随上方起点实时更新；默认按「🍼适配」排序；点「距起点 / 🍼适配」表头可切换排序；高亮行 = 当前筛选匹配；点任意行可在地图定位并弹详情。</div>
     <div style="margin-bottom:10px;"><input id="tableSearch" class="tsearch" type="text" placeholder="🔍 搜索地点 / 地址 / 项目（如：沙滩、滑梯、室内、动物园）"></div>
@@ -262,7 +298,7 @@
   </section>
 
   <!-- 装备清单 -->
-  <section><h2>二、出门前装备清单（打勾）</h2>
+  <section id="sec-pack"><h2>二、出门前装备清单（打勾）</h2>
     <ul class="check">
       <li><label><input type="checkbox"> 推车（能躺的，必带）</label></li>
       <li><label><input type="checkbox"> 推车防晒棚/遮阳罩</label></li>
@@ -286,7 +322,7 @@
   </section>
 
   <!-- 细节 -->
-  <section><h2>三、带娃出行实操细节</h2>
+  <section id="sec-tips"><h2>三、带娃出行实操细节</h2>
     <div class="grid">
       <div class="card"><h4>⏰ 时间安排</h4><ul><li>宝宝仍需午睡 1-2h，<b>9 点前出门</b></li><li>11:00-15:00 最晒最热，待室内/车上睡</li><li>一次只排 1 个主景点，玩 2-3h 就累</li></ul></div>
       <div class="card"><h4>🍽️ 吃与拉</h4><ul><li>优先室内空调+母婴室（商场/欧乐堡/西湖）</li><li>户外提前找洗手间，带够湿巾</li><li>备手指食物，外就餐不准时也不慌</li></ul></div>
@@ -298,7 +334,7 @@
   </section>
 
   <!-- 快速决策（根据当前推荐清单动态生成） -->
-  <section><h2>四、按天气/状态快速决策</h2>
+  <section id="sec-decide"><h2>四、按天气/状态快速决策</h2>
     <p class="note">以下推荐随每日实时检索变化，按天气与当前清单动态生成。</p>
     <table class="quick">
       <thead><tr><th>情况</th><th>推荐去（来自当前清单）</th></tr></thead>
@@ -307,13 +343,15 @@
   </section>
 
   <!-- 历史推荐（仅参考） -->
-  <section><h2>五、历史推荐（参考）</h2>
+  <section id="sec-history"><h2>五、历史推荐（参考）</h2>
     <p class="note">前几日高德实时检索生成的初始推荐清单，仅作历史参考，不计入当前推荐。</p>
     <div id="historyBox"></div>
   </section>
 
   <div class="footer" id="footer">祝周末愉快 👶</div>
-</div>
+</div><!-- /wrap -->
+
+</div><!-- /layout -->
 
 <button class="btn" onclick="window.print()">🖨️ 打印 / 存PDF</button>
 
@@ -1870,6 +1908,23 @@ document.getElementById('mergeBtn').addEventListener('click', async ()=>{
   mergeLatestPlaces();   // 后端不可用（如 file:// 直接打开）→ 回退浏览器端检索
 });
 ['ageY','ageM'].forEach(id=>document.getElementById(id).addEventListener('input',applyAge));
+
+/* ===== 左侧目录：滚动时高亮当前所在区块 ===== */
+(function(){
+  const links=[...document.querySelectorAll('.toc-link')];
+  const map=new Map();
+  links.forEach(a=>{const t=document.getElementById(a.dataset.target); if(t) map.set(t,a);});
+  if(!('IntersectionObserver' in window) || map.size===0) return;
+  const obs=new IntersectionObserver(es=>{
+    es.forEach(e=>{
+      if(e.isIntersecting){
+        links.forEach(a=>a.classList.remove('active'));
+        const a=map.get(e.target); if(a) a.classList.add('active');
+      }
+    });
+  },{rootMargin:'-15% 0px -75% 0px',threshold:0});
+  map.forEach((a,t)=>obs.observe(t));
+})();
 
 /* ===== 后端优先：从常开后台读取当日清单（关掉网页也能每天自动刷新） ===== */
 async function loadBackendToday(){
