@@ -48,6 +48,9 @@
   .chip{border:1.5px solid var(--border);background:#fff;color:var(--text);border-radius:999px;padding:6px 13px;font-size:.85rem;cursor:pointer;transition:.15s;user-select:none;}
   .chip:hover{border-color:var(--primary);}
   .chip.on{background:var(--primary);border-color:var(--primary);color:#fff;font-weight:600;}
+  .chip .cnt{font-style:normal;font-size:.72rem;margin-left:5px;background:rgba(0,0,0,.07);border-radius:8px;padding:0 6px;}
+  .chip.on .cnt{background:rgba(255,255,255,.25);}
+  .chip.zero{opacity:.38;}
   .clr{margin-top:7px;display:inline-block;font-size:.76rem;color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:2px 9px;cursor:pointer;background:#fff;}
   .clr:hover{border-color:var(--accent);color:var(--accent);}
   .result{margin-top:16px;padding:12px 16px;border-radius:10px;font-size:.92rem;background:var(--primary-light);border-left:4px solid var(--primary);display:none;}
@@ -559,22 +562,24 @@ document.getElementById('fitTh').addEventListener('click',()=>{
 });
 
 /* ===== 筛选 ===== */
+/* 单条件匹配判断；skipKey=模拟"去掉该项筛选"（用于智能放宽） */
+function matches(p,tr,skipKey){
+  const w=p.w.split(' '),t=p.t.split(' '),pr=p.purpose.split(' '),d=tr.dataset.d,indoor=p.indoor==1;
+  const km=Number(tr.dataset.km);
+  if(km<minKm||km>maxKm)return false;   // 搜索距离区间作为清单硬窗口：窗口外的地点（含兜底种子）不显示
+  if(sel.weather&&sel.weather!==skipKey&&!w.includes(sel.weather))return false;
+  if(sel.time&&sel.time!==skipKey&&!t.includes(sel.time))return false;
+  if(sel.purpose&&sel.purpose!==skipKey&&!pr.includes(sel.purpose))return false;
+  if(sel.distance&&sel.distance!==skipKey){if(sel.distance==='walk'&&d!=='walk')return false; if(sel.distance==='near'&&d==='far')return false;}
+  if(sel.baby&&sel.baby!==skipKey&&sel.baby!=='fresh'&&d==='far'&&!indoor)return false;
+  if(sel.onlyFit&&sel.onlyFit!==skipKey&&(p.fit==null||p.fit<40))return false;
+  return true;
+}
 function apply(){
   let count=0,firstMatch='';
   PLACES.forEach(p=>{
     const tr=body.querySelector(`tr[data-id="${p.id}"]`);
-    const w=p.w.split(' '),t=p.t.split(' '),pr=p.purpose.split(' '),d=tr.dataset.d,indoor=p.indoor==1;
-    let ok=true;
-    const km=Number(tr.dataset.km);
-    if(km<minKm||km>maxKm) ok=false;   // 搜索距离区间作为清单硬窗口：窗口外的地点（含兜底种子）不显示
-    if(sel.weather&&!w.includes(sel.weather))ok=false;
-    if(sel.time&&!t.includes(sel.time))ok=false;
-    if(sel.purpose&&!pr.includes(sel.purpose))ok=false;
-    if(sel.distance==='walk'&&d!=='walk')ok=false;
-    if(sel.distance==='near'&&d==='far')ok=false;
-    if(sel.baby==='normal'&&d==='far'&&!indoor)ok=false;
-    if(sel.baby==='nap'&&d==='far'&&!indoor)ok=false;
-    if(sel.onlyFit==='1'&&(p.fit==null||p.fit<40))ok=false;   // 仅看适龄：过滤掉明显不适合当前月龄的地点（适配度<40）
+    const ok=matches(p,tr,null);
     tr.style.display=ok?'':'none'; tr.classList.toggle('match',ok);
     if(ok){count++; if(!firstMatch)firstMatch=p.name;}
   });
@@ -584,12 +589,41 @@ function apply(){
   else{
     const cond=active.map(([k,v])=>labels[k][v]).join(' + ');
     let tip;
-    if(count===0){tip='当前组合下没有特别合适的地点。建议：<b>下雨/闷热</b>优先选带「室内」标签的地点；<b>快到午睡</b>就就近公园或回家睡；或放宽"距离意愿/搜索距离区间"试试。';}
+    if(count===0){
+      // 智能放宽：逐项试去掉哪个条件就能出结果，给出最优建议
+      let relaxKey=null,relaxN=0;
+      for(const [k] of active){
+        let c=0; PLACES.forEach(p=>{const tr=body.querySelector(`tr[data-id="${p.id}"]`); if(matches(p,tr,k))c++;});
+        if(c>relaxN){relaxKey=k;relaxN=c;}
+      }
+      if(relaxKey){tip=`当前组合（${cond}）没有匹配地点。建议放宽 <b>「${labels[relaxKey][sel[relaxKey]]}」</b>——放宽后可匹配 <b>${relaxN}</b> 个地点。 <button class="navbtn" onclick="relaxFilter('${relaxKey}')">🔧 一键放宽</button>`;}
+      else{tip=`当前组合（${cond}）没有匹配地点，单项放宽也出不来——多半是「搜索距离区间」太窄，可扩大区间或重置全部筛选。`;}
+    }
     else{const far=PLACES.filter(p=>{const tr=body.querySelector(`tr[data-id="${p.id}"]`);return tr.style.display!=='none'&&tr.dataset.d==='far';}).length;tip=`根据 <b>${cond}</b>，共匹配 <b>${count}</b> 个地点（已高亮）。${far>0?'其中含周边远途 '+far+' 个；':''}首选推荐：<b>${firstMatch}</b>。`;}
     box.innerHTML='🔎 '+tip; box.classList.add('show');
   }
+  updateChipCounts();
   renderHot();
   renderQuick();
+}
+/* 智能筛选：每个选项实时显示"今天清单里单独命中该条件"的地点数；0 命中自动置灰禁选 */
+function updateChipCounts(){
+  document.querySelectorAll('.fgroup .chips .chip').forEach(ch=>{
+    const key=ch.parentElement.dataset.key, val=ch.dataset.v;
+    const backup=Object.assign({},sel);
+    Object.keys(sel).forEach(k=>sel[k]=null); sel[key]=val;   // 只看该条件单独的命中数
+    let n=0; PLACES.forEach(p=>{const tr=body.querySelector(`tr[data-id="${p.id}"]`); if(tr&&matches(p,tr,null))n++;});
+    Object.keys(sel).forEach(k=>sel[k]=backup[k]);            // 还原
+    let b=ch.querySelector('.cnt'); if(!b){b=document.createElement('i');b.className='cnt';ch.appendChild(b);}
+    b.textContent=n; ch.classList.toggle('zero',n===0);
+  });
+}
+/* 一键放宽：去掉建议放宽的那个条件 */
+window.relaxFilter=function(key){
+  sel[key]=null;
+  const g=document.querySelector('.fgroup .chips[data-key="'+key+'"]');
+  if(g)g.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+  apply(); saveState();
 }
 /* 第四点：按天气/状态快速决策 —— 基于「当前推荐清单」动态生成（不再写死） */
 function renderQuick(){
@@ -1492,6 +1526,12 @@ document.querySelectorAll('.chips').forEach(g=>{
   const key=g.dataset.key;
   g.querySelectorAll('.chip').forEach(chip=>{
     chip.addEventListener('click',()=>{
+      if(chip.classList.contains('zero')){
+        const box=document.getElementById('result');
+        box.innerHTML='🔎 <b>「'+((labels[key]||{})[chip.dataset.v]||'该选项')+'」</b>在今天的清单里没有匹配地点（已置灰显示 0）。先换个选项，或扩大「搜索距离区间」再试。';
+        box.classList.add('show');
+        return;
+      }
       if(sel[key]===chip.dataset.v){sel[key]=null;chip.classList.remove('on');}
       else{g.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));chip.classList.add('on');sel[key]=chip.dataset.v;}
       apply(); saveState();
