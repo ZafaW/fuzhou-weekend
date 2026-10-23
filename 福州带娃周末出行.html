@@ -521,8 +521,6 @@ function updateDistances(){
     tr.querySelector('.dist').innerHTML=`约 ${e.km} km<br><span class="note">驾车约 ${e.min} min</span>`;
     markers[p.id].bindPopup(popupHTML(p));
   });
-  const all=PLACES.map(p=>toMap(p.lat,p.lng)); all.push(toMap(start.lat,start.lng));
-  map.fitBounds(all,{padding:[40,40]});
   applySort();
 }
 /* 仅在地图上飞 + 弹窗（不滚动表格） */
@@ -1428,7 +1426,7 @@ function setStart(lat,lng,name,save=true){
   }
   const g=toMap(lat,lng);
   startMarker.setLatLng(g).bindPopup('🏠 起点：'+name);
-  map.flyTo(g,12,{duration:.6});
+  map.flyTo(g,13,{duration:.6});
   document.getElementById('startInput').value=name;
   document.getElementById('startInfo').textContent='已更新起点：'+name+'（表格距离已重算）';
   renderSaved();
