@@ -636,7 +636,7 @@ window.relaxFilter=function(key){
   if(g)g.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
   apply(); saveState();
 }
-/* 第四点：按天气/状态快速决策 —— 基于「当前推荐清单」动态生成（不再写死） */
+/* 第四点：按天气/状态快速决策 —— 基于「当前推荐清单」动态生成 */
 function renderQuick(){
   const tb=document.getElementById('quickBody'); if(!tb)return;
   const rows=[
@@ -693,7 +693,7 @@ function amapJSONP(url){
   });
 }
 /* 高德「关键词文本搜索」：按相关度返回、市内全量、不按距离截断
-   → 远郊（如永泰·哇呜动物乐园）也能被搜到，这正是之前 place/around 漏掉它的根因 */
+   → 远郊（如永泰·哇呜动物乐园）也能被搜到。 */
 function amapText(kw){
   const key=getAmapKey();
   const url='https://restapi.amap.com/v3/place/text?key='+encodeURIComponent(key)+
