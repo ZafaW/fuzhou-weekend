@@ -34,7 +34,8 @@
   tbody tr.detail{background:#fff6ea;box-shadow:inset 3px 0 0 var(--accent);}
   tbody tr:hover{background:#f0f7f5;}
   .num{font-weight:700;color:var(--accent);text-align:center;width:34px;}
-  .place{font-weight:600;color:var(--text);white-space:nowrap;}
+  .place{font-weight:600;color:var(--text);word-break:break-word;}
+  .dist{text-align:center;white-space:nowrap;}
   .fit{text-align:center;white-space:nowrap;}
   .fit b{font-size:1.05rem;}
   .fit-great{color:#1f9d55;} .fit-ok{color:#3a9d6e;} .fit-mid{color:#c79a00;} .fit-low{color:#d9730a;} .fit-no{color:#c0392b;}
@@ -140,7 +141,7 @@
     .btn{display:none;} #filterSec{display:none;} #mapSec{display:none;} #hotSec{display:none;}
     tbody tr.match{background:#eafaf4;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   }
-  @media(max-width:600px){ .check{columns:1;} table{font-size:.78rem;} th,td{padding:7px 6px;} }
+  @media(max-width:600px){ .check{columns:1;} table{font-size:.78rem;} th,td{padding:7px 6px;} .dist{white-space:normal;} }
 </style>
 </head>
 <body>
@@ -352,7 +353,7 @@ const SEED_PLACES = [
 let PLACES = SEED_PLACES.map(p=>({...p}));
 
 const sel={weather:null,time:null,baby:null,purpose:null,distance:null,onlyFit:null};
-let start={lat:26.062,lng:119.278,name:"农林大学"};
+let start={lat:26.0766,lng:119.2397,name:"福建农林大学"};
 let savedStarts=[];
 let sortMode='fit', pickMode=false;   // 默认按🍼适龄适配度降序排序
 let minKm=0, maxKm=30;   // 搜索距离区间(km)：默认 0–30；同时作为清单的硬显示窗口（窗口外不显示）；最大可设 80
@@ -447,7 +448,7 @@ function hav(A,B){const R=6371,r=Math.PI/180;const dLat=(B.lat-A.lat)*r,dLng=(B.
 function est(p){const km=hav(start,p);const min=km<10?km*2.5:km*1.6;return{km:Math.round(km*10)/10,min:Math.max(5,Math.round(min))};}
 
 /* ===== 地图（高德瓦片，免密钥） ===== */
-const map=L.map('map',{scrollWheelZoom:false}).setView([26.07,119.35],11);
+const map=L.map('map',{scrollWheelZoom:false}).setView([26.0766,119.2397],12);
 L.tileLayer('https://wprd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&style=7&x={x}&y={y}&z={z}',{subdomains:'1234',maxZoom:18,attribution:'© 高德地图'}).addTo(map);
 let startMarker=L.marker(toMap(start.lat,start.lng),{icon:L.divIcon({className:'',html:'<div style="font-size:22px;line-height:1">🚩</div>',iconSize:[24,24],iconAnchor:[12,24]})}).addTo(map).bindPopup('🏠 起点：'+start.name);
 const markers={};
