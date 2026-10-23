@@ -1608,14 +1608,17 @@ async function locate(text){
   const key=getAmapKey();
   if(key){
     try{
+      // 用 JSONP 请求地理编码（高德 Web 服务无 CORS 头，裸 fetch 会被浏览器跨域拦截 → 报「Key解析失败」）
       const url='https://restapi.amap.com/v3/geocode/geo?key='+encodeURIComponent(key)+'&address='+encodeURIComponent(text)+'&city=福州';
-      const r=await fetch(url); const j=await r.json();
-      if(j.status==='1'&&j.geocodes&&j.geocodes[0]){
+      const j=await amapJSONP(url);
+      if(j && j.status==='1' && j.geocodes && j.geocodes[0]){
         const [lng,lat]=j.geocodes[0].location.split(',').map(Number); // 高德返回 GCJ-02
         const w=gcj2wgs(lat,lng); setStart(w.lat,w.lng,text); return;
       }
+      document.getElementById('startInfo').textContent='未找到「'+text+'」，换个更具体的地名，或用「🗺️点图选起点」';
+      return;
     }catch(e){}
-    document.getElementById('startInfo').textContent='高德Key解析失败，请检查Key，或用「🗺️点图选起点」';
+    document.getElementById('startInfo').textContent='地址解析失败（可能网络或Key受限），请用「🗺️点图选起点」或「📡我的位置」';
     return;
   }
   document.getElementById('startInfo').textContent='未填高德Key：请点「🗺️点图选起点」在地图上点选，或用「📡我的位置」';
