@@ -454,7 +454,7 @@ function hav(A,B){const R=6371,r=Math.PI/180;const dLat=(B.lat-A.lat)*r,dLng=(B.
 function est(p){const km=hav(start,p);const min=km<10?km*2.5:km*1.6;return{km:Math.round(km*10)/10,min:Math.max(5,Math.round(min))};}
 
 /* ===== 地图（高德瓦片，免密钥） ===== */
-const map=L.map('map',{scrollWheelZoom:false}).setView([26.0766,119.2397],12);
+const map=L.map('map',{scrollWheelZoom:false}).setView([26.0766,119.2397],13);
 L.tileLayer('https://wprd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&style=7&x={x}&y={y}&z={z}',{subdomains:'1234',maxZoom:18,attribution:'© 高德地图'}).addTo(map);
 let startMarker=L.marker(toMap(start.lat,start.lng),{icon:L.divIcon({className:'',html:'<div style="font-size:22px;line-height:1">🚩</div>',iconSize:[24,24],iconAnchor:[12,24]})}).addTo(map).bindPopup('🏠 起点：'+start.name);
 const markers={};
