@@ -19,8 +19,10 @@ const OUTPUT = process.argv[3] || path.join(ROOT, '福州带娃周末出行_今�
 const KEY = (process.env.AMAP_KEY || 'b18549a937a71f7c108e8fb72b510ee5').trim();
 
 // —— 与前端保持一致的检索参数 ——
-const START = { lat: 26.062, lng: 119.278, name: '农林大学' };
+const START = { lat: 26.0766, lng: 119.2397, name: '福建农林大学' };
 const MIN_KM = 0, MAX_KM = 30, MIN_RATING = 4.0;
+// 保底白名单：核心带娃地点若在常规关键词检索中漏网（高德结果排序每天会波动），逐个精确补捞
+const MUST_HAVE = ['沙滩公园','西湖公园','闽江公园','闽江公园南园','福州市儿童公园','福州动物园','左海公园','金牛山公园','花海公园','黎明湖公园','乌塔公园','温泉公园','金鸡山公园','飞凤山奥体公园','福州国家森林公园','江心公园','烟台山公园','福道','闽江公园北园'];
 const KWS = ['公园','儿童公园','动物园','动物乐园','海洋馆','海洋世界','水族馆','游乐场','游乐园','主题公园','亲子','萌宠','植物园','森林公园','湿地','沙滩','海滨','广场','图书馆','少儿','科技馆','科普','温泉','景点','风景区'];
 const BLOCK_RE = /宠物|兽医|动物医院|卫生院|诊所|药店|药房|医院|门诊|超市|便利店|商场|购物中心|酒店|民宿|餐饮|饭店|餐厅|美食|咖啡|茶饮|住宅|小区|公寓|商铺|写字楼|公司|工厂|学校|幼儿园|培训|辅导|停车场|加油|加气|充电|银行|营业厅|维修|理发|美容/;
 const ALLOW_RE = /公园|动物园|水族|海洋|儿童|亲子|游乐|主题公园|植物园|森林公园|湿地|海滨|沙滩|海滩|广场|图书馆|少儿|科技|科普|温泉|景点|风景区|露营|农场|采摘|萌宠/;
@@ -77,7 +79,17 @@ async function refreshPOIs(){
   });
   const eligible = inRange.filter(addEligible);
   const seen=new Set();
-  return eligible.filter(p=>{ const n=normName(p.name); if(seen.has(n)) return false; seen.add(n); return true; });
+  let out = eligible.filter(p=>{ const n=normName(p.name); if(seen.has(n)) return false; seen.add(n); return true; });
+  // 保底白名单补捞：常规检索漏网的核心地点，用专名精确检索一次
+  const inRangeKm=(p)=>{ const parts=(p.location||'').split(',').map(Number); if(parts.length!==2||isNaN(parts[0])) return Infinity; const w=gcj2wgs(parts[1],parts[0]); return hav(w,START); };
+  for(const mh of MUST_HAVE){
+    const core=mh.replace(/^福州市/,'');
+    if(out.some(p=>normName(p.name).indexOf(core)>=0)) continue;
+    const pois=await amapText(mh,1);
+    const hit=pois.find(p=>p&&p.name&&p.location&&addEligible(p)&&normName(p.name).indexOf(core)>=0&&inRangeKm(p)<=MAX_KM);
+    if(hit){ out.push(hit); console.log('[补捞] 白名单地点漏网已补回：'+hit.name); }
+  }
+  return out;
 }
 
 (async()=>{
