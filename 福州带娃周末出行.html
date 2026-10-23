@@ -636,7 +636,7 @@ window.relaxFilter=function(key){
   if(g)g.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
   apply(); saveState();
 }
-/* 第四点：按天气/状态快速决策 —— 基于「当前推荐清单」动态生成（不再写死） */
+/* 第四点：按天气/状态快速决策 —— 基于「当前推荐清单」动态生成 */
 function renderQuick(){
   const tb=document.getElementById('quickBody'); if(!tb)return;
   const rows=[
