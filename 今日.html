@@ -1,0 +1,1577 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>福州带娃周末出行指南</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root{
+    --primary:#2f8f83; --primary-light:#e6f4f1; --accent:#f2933c;
+    --bg:#f7f9f8; --card:#ffffff; --text:#233030; --muted:#6b7c7a; --border:#dfe8e6;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);line-height:1.7;}
+  .wrap{max-width:960px;margin:0 auto;padding:24px 18px 60px;}
+  header.hero{background:linear-gradient(135deg,var(--primary),#3aa897);color:#fff;border-radius:18px;padding:28px 26px;margin-bottom:22px;box-shadow:0 6px 20px rgba(47,143,131,.25);}
+  header.hero h1{margin:0 0 6px;font-size:1.55rem;}
+  header.hero p{margin:0;opacity:.95;font-size:.95rem;}
+  .agein{width:46px;padding:2px 4px;border:1px solid rgba(255,255,255,.6);border-radius:6px;background:rgba(255,255,255,.18);color:#fff;font-size:.95rem;text-align:center;}
+  .agein::-webkit-outer-spin-button,.agein::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  .agein:focus{outline:none;background:rgba(255,255,255,.3);}
+  #ageNote{margin:6px 0 0;color:#eafaf4;font-size:.84rem;}
+  .tag{display:inline-block;background:rgba(255,255,255,.2);border-radius:999px;padding:3px 11px;font-size:.78rem;margin:8px 6px 0 0;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 22px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,.03);}
+  h2{font-size:1.2rem;margin:0 0 14px;color:var(--primary);display:flex;align-items:center;gap:8px;}
+  h2::before{content:"";width:6px;height:20px;background:var(--accent);border-radius:3px;display:inline-block;}
+  table{width:100%;border-collapse:collapse;font-size:.86rem;}
+  th,td{border:1px solid var(--border);padding:9px 10px;text-align:left;vertical-align:top;}
+  th{background:var(--primary-light);color:var(--primary);font-weight:600;white-space:nowrap;}
+  tbody tr{cursor:pointer;}
+  tbody tr:nth-child(even){background:#fafcfb;}
+  tbody tr.match{background:#eafaf4;box-shadow:inset 3px 0 0 var(--primary);}
+  tbody tr.detail{background:#fff6ea;box-shadow:inset 3px 0 0 var(--accent);}
+  tbody tr:hover{background:#f0f7f5;}
+  .num{font-weight:700;color:var(--accent);text-align:center;width:34px;}
+  .place{font-weight:600;color:var(--text);white-space:nowrap;}
+  .fit{text-align:center;white-space:nowrap;}
+  .fit b{font-size:1.05rem;}
+  .fit-great{color:#1f9d55;} .fit-ok{color:#3a9d6e;} .fit-mid{color:#c79a00;} .fit-low{color:#d9730a;} .fit-no{color:#c0392b;}
+  .note{color:var(--muted);font-size:.82rem;}
+
+  .filter-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;}
+  .fgroup{position:relative;}
+  .fgroup label.gl{display:block;font-size:.85rem;font-weight:600;color:var(--muted);margin-bottom:7px;}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;}
+  .chip{border:1.5px solid var(--border);background:#fff;color:var(--text);border-radius:999px;padding:6px 13px;font-size:.85rem;cursor:pointer;transition:.15s;user-select:none;}
+  .chip:hover{border-color:var(--primary);}
+  .chip.on{background:var(--primary);border-color:var(--primary);color:#fff;font-weight:600;}
+  .clr{margin-top:7px;display:inline-block;font-size:.76rem;color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:2px 9px;cursor:pointer;background:#fff;}
+  .clr:hover{border-color:var(--accent);color:var(--accent);}
+  .result{margin-top:16px;padding:12px 16px;border-radius:10px;font-size:.92rem;background:var(--primary-light);border-left:4px solid var(--primary);display:none;}
+  .result.show{display:block;} .result b{color:var(--primary);}
+  .btnrow{margin-top:14px;} .mini{background:#fff;border:1.5px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 14px;font-size:.85rem;cursor:pointer;}
+  .mini:hover{border-color:var(--accent);color:var(--accent);}
+
+  .startrow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px;}
+  .startrow label{font-weight:600;color:var(--muted);font-size:.9rem;}
+  .startrow input{flex:1;min-width:150px;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:.9rem;}
+  .startrow button{background:var(--primary);color:#fff;border:none;border-radius:9px;padding:9px 16px;font-size:.88rem;cursor:pointer;font-weight:600;}
+  .startrow button.ghost{background:#fff;color:var(--primary);border:1.5px solid var(--primary);}
+  .startrow button.pick{background:#fff;color:var(--accent);border:1.5px solid var(--accent);}
+  .startrow button.pick.on{background:var(--accent);color:#fff;}
+  .startrow button:hover{opacity:.9;}
+  #startInfo{font-size:.82rem;color:var(--muted);width:100%;}
+  .savedbox{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:6px 0 12px;padding:10px 12px;background:var(--primary-light);border-radius:10px;}
+  .savedbox .gl2{font-size:.82rem;font-weight:600;color:var(--muted);}
+  .chip.saved{display:inline-flex;align-items:center;gap:6px;padding:5px 8px 5px 12px;}
+  .chip.saved .sname{cursor:pointer;}
+  .chip.saved .sdel{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.06);color:var(--muted);font-size:.72rem;line-height:1;cursor:pointer;}
+  .chip.saved .sdel:hover{background:var(--accent);color:#fff;}
+  .chip.saved.cur{background:var(--primary);color:#fff;border-color:var(--primary);}
+  .chip.saved.cur .sdel{background:rgba(255,255,255,.25);color:#fff;}
+  .keyrow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px;}
+  .updaterow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:4px 0 6px;padding:10px 12px;background:var(--primary-light);border-radius:10px;}
+  .updaterow label{font-weight:600;color:var(--muted);font-size:.9rem;}
+  .updaterow input[type=number]{padding:8px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:.9rem;}
+  .updaterow button.primary{background:var(--accent);color:#fff;border:none;border-radius:9px;padding:9px 16px;font-size:.88rem;cursor:pointer;font-weight:600;}
+  .updaterow button.primary:hover{opacity:.9;}
+  .keyrow input{flex:1;min-width:200px;padding:8px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:.85rem;}
+  .keyrow .note{width:100%;}
+  #map{height:430px;border-radius:12px;border:1px solid var(--border);z-index:1;}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);margin-top:10px;}
+  .legend span{display:inline-flex;align-items:center;gap:5px;}
+  .dot{width:11px;height:11px;border-radius:50%;display:inline-block;}
+
+  .hotgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;}
+  .hotcard{border:1px solid var(--border);border-radius:12px;padding:14px 16px;background:linear-gradient(160deg,#fff,#f3faf8);cursor:pointer;transition:.15s;}
+  .hotcard:hover{box-shadow:0 4px 14px rgba(47,143,131,.18);transform:translateY(-2px);}
+  .hotcard .rank{font-size:.78rem;color:#fff;background:var(--accent);border-radius:999px;padding:2px 10px;display:inline-block;margin-bottom:6px;}
+  .hotcard h4{margin:0 0 4px;font-size:1rem;color:var(--primary);}
+  .hotcard .why{font-size:.84rem;color:var(--muted);}
+  .hotcard .meta{font-size:.8rem;color:var(--muted);margin-top:6px;}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;}
+  .card{border:1px solid var(--border);border-radius:12px;padding:14px 16px;background:#fcfefd;}
+  .card h4{margin:0 0 6px;font-size:.98rem;color:var(--primary);}
+  .card ul{margin:0;padding-left:18px;} .card li{margin:3px 0;font-size:.88rem;}
+  .check{list-style:none;padding:0;margin:0;columns:2;column-gap:24px;}
+  .check li{break-inside:avoid;margin:5px 0;font-size:.9rem;}
+  .check input{margin-right:8px;transform:scale(1.15);accent-color:var(--primary);}
+  .quick td:first-child{font-weight:600;color:var(--primary);white-space:nowrap;}
+  .callout{background:var(--primary-light);border-left:4px solid var(--primary);border-radius:0 10px 10px 0;padding:12px 16px;font-size:.9rem;margin:10px 0;}
+  .navbtn{border:1.5px solid var(--primary);background:#fff;color:var(--primary);border-radius:8px;padding:5px 10px;font-size:.8rem;cursor:pointer;white-space:nowrap;}
+  .navbtn:hover{background:var(--primary);color:#fff;}
+  .guide-modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:200;padding:20px;}
+  .guide-modal.show{display:flex;}
+  .guide-box{background:#fff;border-radius:16px;max-width:560px;width:100%;max-height:86vh;overflow:auto;padding:22px 24px;box-shadow:0 10px 40px rgba(0,0,0,.25);}
+  .guide-h{font-size:1.15rem;font-weight:700;color:var(--primary);margin-bottom:4px;}
+  .guide-sub{color:var(--muted);font-size:.85rem;margin-bottom:14px;}
+  .guide-sec{margin:12px 0;font-size:.92rem;line-height:1.6;}
+  .guide-sec>b{color:var(--text);}
+  .guide-text{white-space:pre-wrap;background:var(--primary-light);border-radius:10px;padding:10px 12px;margin-top:6px;font-size:.88rem;color:#234;line-height:1.7;}
+  .guide-list{margin:6px 0 0;padding-left:18px;}
+  .guide-list li{margin:5px 0;line-height:1.65;}
+  .guide-note-row{display:flex;align-items:center;gap:10px;margin-top:8px;}
+  .strat-scene{background:var(--primary-light);border-radius:12px;padding:12px 14px;margin:8px 0;border-left:4px solid var(--primary);}
+  .strat-scene h4{margin:0 0 5px;font-size:.95rem;color:var(--primary);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .strat-age{font-size:.7rem;padding:1px 9px;border-radius:20px;font-weight:600;}
+  .strat-age.good{background:#e3f5ea;color:#1f9d55;} .strat-age.mid{background:#fdf2d6;color:#b8860b;} .strat-age.warn{background:#fde6d8;color:#d9730a;} .strat-age.na{background:#eef0f2;color:#888;}
+  .strat-detail{font-size:.88rem;color:#234;line-height:1.65;margin:4px 0;}
+  .strat-tip{font-size:.84rem;color:#555;margin-top:5px;}
+  .strat-timeline{white-space:pre-wrap;background:#fffaf0;border:1px dashed var(--primary);border-radius:10px;padding:10px 12px;font-size:.86rem;line-height:1.7;color:#5a4a2a;}
+  .histent{font-size:.86rem;line-height:1.7;padding:6px 10px;border-left:3px solid var(--primary);background:var(--primary-light);border-radius:0 8px 8px 0;margin:8px 0;}
+  .guide-btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;}
+  #sortTh{cursor:pointer;} #sortTh:hover{text-decoration:underline;}
+  .footer{text-align:center;color:var(--muted);font-size:.8rem;margin-top:8px;}
+  .btn{position:fixed;right:18px;bottom:18px;background:var(--primary);color:#fff;border:none;border-radius:50px;padding:12px 18px;font-size:.9rem;box-shadow:0 4px 14px rgba(47,143,131,.4);cursor:pointer;z-index:99;}
+  .leaflet-popup-content .pop{font-size:13px;line-height:1.6;max-width:240px;}
+  .leaflet-popup-content .pop b{color:var(--primary);}
+  .leaflet-popup-content .popsub{color:var(--muted);font-size:12px;}
+  .leaflet-popup-content .poprow{margin:4px 0;}
+  .leaflet-popup-content .popbtns{display:flex;gap:8px;margin-top:8px;}
+  .leaflet-popup-content .popbtns button{cursor:pointer;border:1.5px solid var(--primary);background:#fff;color:var(--primary);border-radius:7px;padding:5px 9px;font-size:12px;}
+  .leaflet-popup-content .popbtns button:hover{background:var(--primary);color:#fff;}
+  @media print{
+    body{background:#fff;} .wrap{max-width:100%;padding:0;}
+    section{box-shadow:none;break-inside:avoid;}
+    header.hero{box-shadow:none;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .btn{display:none;} #filterSec{display:none;} #mapSec{display:none;} #hotSec{display:none;}
+    tbody tr.match{background:#eafaf4;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  }
+  @media(max-width:600px){ .check{columns:1;} table{font-size:.78rem;} th,td{padding:7px 6px;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <h1>🍼 福州带娃周末出行指南</h1>
+    <p id="todayDate" style="margin:0 0 6px;font-size:.9rem;opacity:.95;"></p>
+    <p>宝宝
+      <input id="ageY" class="agein" type="number" min="0" max="6" value="1"> 岁
+      <input id="ageM" class="agein" type="number" min="0" max="11" value="2"> 个月
+      · 起点默认农林大学，可在下方自定义
+    </p>
+    <p id="ageNote"></p>
+    <div id="ageTags">
+      <span class="tag">喜沙喜水喜动物</span>
+      <span class="tag">怕晒怕热</span>
+      <span class="tag" id="napTag">需午睡</span>
+      <span class="tag">优先平坦好推车 · 有树荫 · 人少</span>
+      <span class="tag">含福州 + 周边 1-2h</span>
+    </div>
+  </header>
+
+  <!-- 智能筛选 -->
+  <section id="filterSec">
+    <h2>🔎 按今天的情况智能筛选</h2>
+    <div class="note" style="margin-bottom:14px;">勾选下面几项，下方清单会自动只显示合适的地点并高亮；每组右下「✕ 清除」可单独清空该项。什么都不选 = 显示全部。</div>
+    <div class="filter-grid">
+      <div class="fgroup"><label class="gl">今天天气</label><div class="chips" data-key="weather">
+        <span class="chip" data-v="sunny">☀️ 晴天</span><span class="chip" data-v="cloudy">☁️ 多云/阴</span><span class="chip" data-v="rain">🌧️ 下雨</span><span class="chip" data-v="hot">🥵 闷热大太阳</span>
+      </div><span class="clr" data-key="weather">✕ 清除</span></div>
+      <div class="fgroup"><label class="gl">打算几点出门</label><div class="chips" data-key="time">
+        <span class="chip" data-v="morning">🌅 上午</span><span class="chip" data-v="afternoon">🕑 下午</span><span class="chip" data-v="evening">🌇 傍晚</span>
+      </div><span class="clr" data-key="time">✕ 清除</span></div>
+      <div class="fgroup"><label class="gl">宝宝状态</label><div class="chips" data-key="baby">
+        <span class="chip" data-v="fresh">⚡ 精神饱满</span><span class="chip" data-v="normal">🙂 一般般</span><span class="chip" data-v="nap">😴 快到午睡</span>
+      </div><span class="clr" data-key="baby">✕ 清除</span></div>
+      <div class="fgroup"><label class="gl">出行目的</label><div class="chips" data-key="purpose">
+        <span class="chip" data-v="energy">🏃 放电跑跳</span><span class="chip" data-v="cognitive">🧠 认知启蒙</span><span class="chip" data-v="indoor">❄️ 避暑室内</span><span class="chip" data-v="sand">🏖️ 玩沙看海</span><span class="chip" data-v="walk">📷 散步拍照</span><span class="chip" data-v="relax">💆 亲子放松</span>
+      </div><span class="clr" data-key="purpose">✕ 清除</span></div>
+      <div class="fgroup"><label class="gl">距离意愿</label><div class="chips" data-key="distance">
+        <span class="chip" data-v="walk">🚶 超短距离(散步遛娃)</span><span class="chip" data-v="near">🚗 就近(20min内)</span><span class="chip" data-v="any">🌍 远近都行</span>
+      </div><span class="clr" data-key="distance">✕ 清除</span></div>
+      <div class="fgroup"><label class="gl">适龄筛选</label><div class="chips" data-key="onlyFit">
+        <span class="chip" data-v="1">🍼 仅看适龄(≥一般)</span>
+      </div><span class="clr" data-key="onlyFit">✕ 清除</span></div>
+    </div>
+    <div class="result" id="result"></div>
+    <div class="btnrow"><button class="mini" id="resetBtn">↺ 重置全部筛选</button></div>
+  </section>
+
+  <!-- 地图 + 起点 -->
+  <section id="mapSec">
+    <h2>🗺️ 地图与起点（高德底图）</h2>
+    <div class="startrow">
+      <label>📍 起点</label>
+      <input id="startInput" value="农林大学" placeholder="输入起点，如：农林大学 / 东街口 / 宝龙">
+      <button id="locateBtn">定位并更新</button>
+      <button class="ghost" id="geoBtn">📡 我的位置</button>
+      <button class="pick" id="pickBtn">🗺️ 点图选起点</button>
+      <span id="startInfo"></span>
+    </div>
+    <div class="savedbox">
+      <span class="gl2">已记忆起点</span>
+      <div class="chips" id="savedStarts"></div>
+      <span class="clr" id="saveCur">＋ 保存当前</span>
+    </div>
+    <div class="keyrow">
+      <input id="amapKeyInput" placeholder="高德 Web 服务 Key（可选）：用于地址文字搜索">
+      <span class="note">本文件已内置「共享 Key」，任何打开此文件的人都能直接用地图与实时检索，无需各自填写。如需用自己的 Key，可在此覆盖（仅存本机）。申请：高德开放平台 → 创建应用 → Web服务 Key。</span>
+    </div>
+    <div class="updaterow">
+      <label>🔍 搜索距离区间</label>
+      <input id="minKmInput" type="number" min="0" max="80" step="5" value="0" style="width:58px;"> – <input id="maxKmInput" type="number" min="0" max="80" step="5" value="30" style="width:58px;"> <span class="note">km（最小 0 · 最大 80；默认 0–30，清单显示上限 80）</span>
+      <button id="mergeBtn" class="primary">🔄 检索并更新清单（高德实时）</button>
+      <span id="dsStatus" class="note" style="margin-left:6px;"></span>
+    </div>
+    <div id="map"></div>
+    <div class="legend">
+      <span><i class="dot" style="background:#e74c3c"></i>起点</span>
+      <span><i class="dot" style="background:#2f8f83"></i>推荐地点</span>
+      <span><i class="dot" style="background:#f2933c"></i>高德实时新发现</span>
+      <span>💡 点击地图标记会弹出详情（不跳转表格）；弹窗内「📋 查看表格详情」可定位到表格行；点「🧭」或表格「🧭」可拉起高德导航</span>
+    </div>
+    <div class="note" style="margin-top:8px;">说明：底图用高德瓦片（国内可达）；坐标为近似位置，已做 WGS-84→GCJ-02 偏移校正；车程按直线距离估算（市区约 2.5 min/km、远途约 1.6 min/km），实际以高德导航为准。</div>
+  </section>
+
+  <!-- 每日热门 -->
+  <section id="hotSec">
+    <h2>🔥 每日热门地点</h2>
+    <div class="note" style="margin-bottom:12px;">根据天气与周末/工作日情况生成，点击卡片可在地图定位。⭐ 评分取自高德聚合数据（整合大众点评、美团等平台用户评价）；清单为高德「按相关度」检索的<b>带娃目的地推荐</b>——已过滤宠物店/动物医院/商场店铺等非目的地，普通公园/广场仅保留评分≥4.0 的优质点，同一大场所（如沙滩公园各入口）自动合并为一条；每日 8 点自动刷新，也可在上方面板手动「🔄 检索并更新清单」。</div>
+    <div class="hotgrid" id="hotGrid"></div>
+  </section>
+
+  <!-- 推荐清单 -->
+  <section>
+    <h2>一、周末出行推荐清单（共 <span id="placeCount">22</span> 个）</h2>
+    <div class="note" style="margin-bottom:12px;">"距起点"随上方起点实时更新；默认按「🍼适配」排序（6 岁和 1 岁不一样，适配度按宝宝月龄算）；点「距起点 / 🍼适配」表头可切换排序；高亮行 = 当前筛选匹配；点任意行可在地图定位并弹详情。</div>
+    <table id="placeTable">
+      <thead><tr><th>#</th><th>地点</th><th id="sortTh">距起点 <span id="sortInd"></span></th><th>游玩项目</th><th>卖点（适合这个月龄）</th><th>🍴 吃饭/野餐</th><th>⭐ 评分/人均</th><th>出行时间</th><th id="fitTh">🍼适配 <span id="fitInd">▼</span></th><th>🧭 导航</th></tr></thead>
+      <tbody id="placeBody"></tbody>
+    </table>
+    <div class="callout">📌 <b>一句话选景：</b>懒得跑→乌龙江湿地 / 沙滩公园 / 闽江公园；想凉快不晒→欧乐堡 / 少儿图书馆 / 商场；想放电→儿童公园 / 飞凤山；想看真海→平潭 / 奇达村；夏天避暑→鼓岭。</div>
+    <div class="callout">🍴 <b>吃饭/野餐速览：</b>商场综合体（仓山万达/爱琴海、东街口、台江万达、泰禾）母婴室+儿童餐+空调最省心；户外公园（乌龙江湿地/沙滩公园/花海/飞凤山/梁厝）草坪适合自带野餐垫；闽菜偏咸辣，可单点清淡面线糊、锅边糊、蒸蛋；避开 12:00-13:00 高峰更从容。</div>
+  </section>
+
+  <!-- 装备清单 -->
+  <section><h2>二、出门前装备清单（打勾）</h2>
+    <ul class="check">
+      <li><label><input type="checkbox"> 推车（能躺的，必带）</label></li>
+      <li><label><input type="checkbox"> 推车防晒棚/遮阳罩</label></li>
+      <li><label><input type="checkbox"> 换洗衣物 2-3 套</label></li>
+      <li><label><input type="checkbox"> 隔尿垫</label></li>
+      <li><label><input type="checkbox"> 纸尿裤（足量）</label></li>
+      <li><label><input type="checkbox"> 湿巾 + 手口湿巾</label></li>
+      <li><label><input type="checkbox"> 垃圾袋</label></li>
+      <li><label><input type="checkbox"> 辅食/零食</label></li>
+      <li><label><input type="checkbox"> 保温杯（热水）</label></li>
+      <li><label><input type="checkbox"> 奶瓶 + 围兜</label></li>
+      <li><label><input type="checkbox"> 遮阳帽</label></li>
+      <li><label><input type="checkbox"> 婴儿防晒霜</label></li>
+      <li><label><input type="checkbox"> 防蚊液（2岁以下慎用）</label></li>
+      <li><label><input type="checkbox"> 小风扇/降温贴</label></li>
+      <li><label><input type="checkbox"> 薄毯（空调房/车上）</label></li>
+      <li><label><input type="checkbox"> 常用药（退烧/蒙脱石/创可贴）</label></li>
+      <li><label><input type="checkbox"> 安抚玩具/小绘本</label></li>
+      <li><label><input type="checkbox"> 安全座椅</label></li>
+    </ul>
+  </section>
+
+  <!-- 细节 -->
+  <section><h2>三、带娃出行实操细节</h2>
+    <div class="grid">
+      <div class="card"><h4>⏰ 时间安排</h4><ul><li>宝宝仍需午睡 1-2h，<b>9 点前出门</b></li><li>11:00-15:00 最晒最热，待室内/车上睡</li><li>一次只排 1 个主景点，玩 2-3h 就累</li></ul></div>
+      <div class="card"><h4>🍽️ 吃与拉</h4><ul><li>优先室内空调+母婴室（商场/欧乐堡/西湖）</li><li>户外提前找洗手间，带够湿巾</li><li>备手指食物，外就餐不准时也不慌</li></ul></div>
+      <div class="card"><h4>☀️ 防晒防蚊</h4><ul><li>优先物理防晒（帽+棚+避正午）</li><li>防晒霜婴儿专用，提前 15min 涂</li><li>湿地/公园穿薄长袖长裤比喷药稳</li></ul></div>
+      <div class="card"><h4>🛟 安全</h4><ul><li>水边（闽江/平潭/湿地）必牵手或抱紧</li><li>戏水沙池盯紧"吃沙吃水"</li><li>动物园别伸手进笼、别喂自带食物</li></ul></div>
+      <div class="card"><h4>🚑 应急</h4><ul><li>就近：省妇幼（道山路）、市一/附一</li><li>平潭/永泰出发前查好当地医院</li><li>发烧腹泻别硬撑，立刻回程</li></ul></div>
+      <div class="card"><h4>🚗 长途提示</h4><ul><li>平潭/永泰每 1-1.5h 进服务区下车动动</li><li>备安全座椅+薄毯+小玩具</li><li>平潭建议住一晚，别当天往返</li></ul></div>
+    </div>
+  </section>
+
+  <!-- 快速决策（根据当前推荐清单动态生成） -->
+  <section><h2>四、按天气/状态快速决策</h2>
+    <p class="note">以下推荐随「每日高德检索生成的推荐清单」实时变化，不再写死。</p>
+    <table class="quick">
+      <thead><tr><th>情况</th><th>推荐去（来自当前清单）</th></tr></thead>
+      <tbody id="quickBody"></tbody>
+    </table>
+  </section>
+
+  <!-- 历史推荐（仅参考） -->
+  <section><h2>五、历史推荐（参考）</h2>
+    <p class="note">前几日高德实时检索生成的初始推荐清单，仅作历史参考，不计入当前推荐。</p>
+    <div id="historyBox"></div>
+  </section>
+
+  <div class="footer" id="footer">祝周末愉快 👶</div>
+</div>
+
+<button class="btn" onclick="window.print()">🖨️ 打印 / 存PDF</button>
+
+<div class="guide-modal" id="guideModal">
+  <div class="guide-box">
+    <div id="guideBody"></div>
+  </div>
+</div>
+
+<script>
+/* ===== 坐标偏移校正（WGS-84 ↔ GCJ-02，高德用 GCJ-02） ===== */
+const a=6378245.0, ee=0.00669342162296594323;
+function outOfChina(lat,lng){return !(lng>73.66&&lng<135.05&&lat>3.86&&lat<53.55);}
+function tLat(lng,lat){let r=-100+2*lng+3*lat+0.2*lat*lat+0.1*lng*lat+0.2*Math.sqrt(Math.abs(lng));r+=(20*Math.sin(6*lng*Math.PI)+20*Math.sin(2*lng*Math.PI))*2/3;r+=(20*Math.sin(lat*Math.PI)+40*Math.sin(lat/3*Math.PI))*2/3;r+=(160*Math.sin(lat/12*Math.PI)+320*Math.sin(lat*Math.PI/30))*2/3;return r;}
+function tLng(lng,lat){let r=300+lng+2*lat+0.1*lng*lng+0.1*lng*lat+0.1*Math.sqrt(Math.abs(lng));r+=(20*Math.sin(6*lng*Math.PI)+20*Math.sin(2*lng*Math.PI))*2/3;r+=(20*Math.sin(lat*Math.PI)+40*Math.sin(lat/3*Math.PI))*2/3;r+=(150*Math.sin(lat/12*Math.PI)+300*Math.sin(lat/30*Math.PI))*2/3;return r;}
+function wgs2gcj(wlat,wlng){if(outOfChina(wlat,wlng))return{lat:wlat,lng:wlng};let dLat=tLat(wlng-105,wlat-35),dLng=tLng(wlng-105,wlat-35);const rad=wlat/180*Math.PI;let m=Math.sin(rad);m=1-ee*m*m;const sq=Math.sqrt(m);dLat=(dLat*180)/((a*(1-ee))/(m*sq)*Math.PI);dLng=(dLng*180)/(a/sq*Math.cos(rad)*Math.PI);return{lat:wlat+dLat,lng:wlng+dLng};}
+function gcj2wgs(glat,glng){const g=wgs2gcj(glat,glng);return{lat:glat+(glat-g.lat),lng:glng+(glng-g.lng)};}
+const toMap=(lat,lng)=>wgs2gcj(lat,lng);
+const fromMap=(lat,lng)=>gcj2wgs(lat,lng);
+
+/* ===== 地点兜底数据（坐标为近似 WGS-84） =====
+   这 22 个只是「兜底」：仅在无高德 Key / 检索无结果 / 离线时启用，保证页面不空。
+   日常清单由「每日高德实时检索」生成（见 mergeLatestPlaces），不把这 22 个写死进推荐。 */
+const EMBEDDED_SNAPSHOT = [{"parent":[],"pcode":"350000","keytag":"公园","type":"风景名胜;公园广场;公园","photos":[{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B0FFG9EZ1H/comment/C32D9719_0776_4E43_876D_245754E1B95C_L0_001_1500_200_1763700945767_50552428.jpg"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B0FFG9EZ1H/comment/content_media_external_file_1181_1766383211829_15121306.jpg"},{"provider":[],"title":[],"url":"https://store.is.autonavi.com/showpic/eb3dfc2dda5f84620000008766422197?type=pic"}],"building":[],"typecode":"110101","poiweight":[],"citycode":"0591","adname":"鼓楼区","children":[],"featured_reviews_remake":[],"tel":[],"id":"B0FFG9EZ1H","tag":[],"entr_location":"119.297337,26.07195","adcode":"350102","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":"乌山","childtype":[],"atag":[],"name":"黎明湖公园","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 06:00-21:30","rating":"4.6","open_time":"06:00-21:30","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919028322","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-20 10:26:11","website":[],"address":"乌山路福州市委旁边(黎明戴斯大酒店)","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.296473,26.072626","groupbuy_num":"0","featured_reviews":[]},{"parent":[],"pcode":"350000","keytag":"城市公园","type":"风景名胜;公园广场;公园","photos":[{"provider":[],"title":[],"url":"http://store.is.autonavi.com/showpic/f279f74689f7f722a87f216f068ff387"},{"provider":[],"title":[],"url":"http://store.is.autonavi.com/showpic/0c0c556dc06fb9e91702604a6f2c95b7"},{"provider":[],"title":[],"url":"http://aos-cdn-image.amap.com/sns/ugccomment/7f3c1d99-3e8f-4c0e-828c-c4fd61a74999.jpg"}],"building":[],"typecode":"110101","poiweight":[],"citycode":"0591","adname":"鼓楼区","children":[],"featured_reviews_remake":[],"tel":"0591-83783655;0591-83783767","id":"B024F05ERL","tag":[],"entr_location":"119.290284,26.090298","adcode":"350102","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":[],"childtype":[],"atag":[],"name":"西湖公园","shopid":[],"favorite_num":[],"navi_poiid":"G50F023043_101086","distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 05:30-22:30 最晚进入22:00；具体营业状态以当天开放情况为准。","rating":"4.7","open_time":"05:30-22:30","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919121300","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-23 08:20:49","website":[],"address":"湖滨路70号(西门地铁站B口步行530米)","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.289152,26.092037","groupbuy_num":"0","featured_reviews":[]},{"parent":[],"pcode":"350000","keytag":"4A景区","type":"风景名胜;风景名胜;国家级景点","photos":[{"provider":[],"title":[],"url":"http://store.is.autonavi.com/showpic/c885d61b5646f42a256cbf48b62e658a"},{"provider":[],"title":[],"url":"https://store.is.autonavi.com/showpic/d1c55bc7c81e1bc20000003123538740?type=pic"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B024F05ESI/comment/content_media_external_file_20898_ss__1764904286003_39319608.jpg"}],"building":[],"typecode":"110202","poiweight":[],"citycode":"0591","adname":"鼓楼区","children":[],"featured_reviews_remake":[],"tel":"0591-83355720;0591-83306464","id":"B024F05ESI","tag":[],"entr_location":"119.306311,26.08055","adcode":"350102","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":"新店","childtype":[],"atag":[],"name":"于山风景名胜公园","shopid":[],"favorite_num":[],"navi_poiid":"G50F024043_4140","distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 00:00-24:00","rating":"4.6","open_time":"24小时营业","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919029411","shopinfo":"2","alias":"于山公园","event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-23 08:19:07","website":[],"address":"法海路23-1号(南门兜地铁站M口步行30米)","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.307678,26.078030","groupbuy_num":"0","featured_reviews":[]},{"parent":[],"pcode":"350000","keytag":"公园","type":"风景名胜;公园广场;公园","photos":[{"provider":[],"title":"茶亭公园","url":"http://store.is.autonavi.com/showpic/55a725503e169077ab099e966dc84dc6"},{"provider":[],"title":"茶亭公园","url":"http://store.is.autonavi.com/showpic/839d3381f822663559bf1c4164686137"},{"provider":[],"title":[],"url":"http://store.is.autonavi.com/showpic/6937d0ea19afd5688c114e03070c1d8e"}],"building":[],"typecode":"110101","poiweight":[],"citycode":"0591","adname":"台江区","children":[],"featured_reviews_remake":[],"tel":"0591-83346996;0591-83356658","id":"B024F01297","tag":[],"entr_location":"119.307573,26.066704","adcode":"350103","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":"350004","business_area":"茶亭","childtype":[],"atag":[],"name":"茶亭公园","shopid":[],"favorite_num":[],"navi_poiid":"G50F024043_150029","distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 05:30-22:30","rating":"4.6","open_time":"05:30-22:30","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919027421","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-22 19:17:03","website":[],"address":"广达路166号(茶亭地铁站D口步行340米)","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.306451,26.066519","groupbuy_num":"0","featured_reviews":[]},{"parent":[],"pcode":"350000","keytag":"公园","type":"风景名胜;公园广场;公园","photos":[{"provider":[],"title":[],"url":"http://store.is.autonavi.com/showpic/7688bfe59af1e9e798a12949e1f75080"},{"provider":[],"title":[],"url":"https://store.is.autonavi.com/showpic/2589dafd6dd735591c4abb611d82edce"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B024F05T46/comment/content_media_external_file_364765_1762334949724_71355603.jpg"}],"building":[],"typecode":"110101","poiweight":[],"citycode":"0591","adname":"台江区","children":[],"featured_reviews_remake":[],"tel":"0591-87538056","id":"B024F05T46","tag":[],"entr_location":"119.290822,26.075737","adcode":"350103","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":"黎明","childtype":[],"atag":[],"name":"白马河公园","shopid":[],"favorite_num":[],"navi_poiid":"G50F024043_35294;52855","distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 00:00-24:00","rating":"4.3","open_time":"24小时营业","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919028311","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-23 00:18:08","website":[],"address":"白马北路174号","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.291746,26.069598","groupbuy_num":"0","featured_reviews":[]},{"parent":[],"pcode":"350000","keytag":"城市公园","type":"风景名胜;公园广场;公园","photos":[{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B024F0TU97/comment/content_media_external_file_1000141146_ss__1764342131549_36455838.jpg"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B024F0TU97/comment/EAF18F46_D489_4E62_A6B3_3ECB6A659913_L0_001_2000_150_1766621854065_85328012.jpg"},{"provider":[],"title":[],"url":"https://store.is.autonavi.com/showpic/0c0c9c01420b6e680000003138384300?type=pic"}],"building":[],"typecode":"110101","poiweight":[],"citycode":"0591","adname":"鼓楼区","children":[],"featured_reviews_remake":[],"tel":[],"id":"B024F0TU97","tag":[],"entr_location":"119.301476,26.077707","adcode":"350102","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":"乌山","childtype":[],"atag":[],"name":"乌塔公园","shopid":[],"favorite_num":[],"navi_poiid":"G50F024043_39774","distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 00:00-24:00","rating":"4.6","open_time":"24小时营业","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919029400","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-08-31 20:35:30","website":[],"address":"乌石山东麓(南门兜地铁站B西口步行150米)","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.300260,26.077304","groupbuy_num":"0","featured_reviews":[]},{"parent":[],"pcode":"350000","keytag":"公园","type":"风景名胜;公园广场;公园","photos":[{"provider":[],"title":[],"url":"http://store.is.autonavi.com/showpic/9b2f5e77662e80fa661ddbef70b7104e"},{"provider":[],"title":[],"url":"http://store.is.autonavi.com/showpic/89187c9bf76af3b4c468955548af2fdd"},{"provider":[],"title":[],"url":"http://store.is.autonavi.com/showpic/bb58697a5a33db04b6c5be996c90033c"}],"building":[],"typecode":"110101","poiweight":[],"citycode":"0591","adname":"鼓楼区","children":[],"featured_reviews_remake":[],"tel":[],"id":"B024F04DDS","tag":[],"entr_location":"119.286409,26.101111","adcode":"350102","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":"左海","childtype":[],"atag":[],"name":"左海公园","shopid":[],"favorite_num":[],"navi_poiid":"G50F023043_18277","distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"1月至6月,9月至12月 周一至周日 08:30-17:00；7月至8月 周一至周日 08:30-21:00；非暑假期间，周六日17:30闭园","rating":"4.6","open_time":[],"ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919121222","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-23 09:21:12","website":[],"address":"五凤街道五凤街道铜盘路29号","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.284958,26.098109","groupbuy_num":"0","featured_reviews":[]},{"parent":[],"pcode":"350000","keytag":"公园","type":"风景名胜;公园广场;公园","photos":[{"provider":[],"title":[],"url":"http://store.is.autonavi.com/showpic/9484c26e4ebabc7c427e1719d6dad357"},{"provider":[],"title":[],"url":"https://store.is.autonavi.com/showpic/221bbcf1e47e80a60000005129136671?type=pic"},{"provider":[],"title":[],"url":"https://store.is.autonavi.com/showpic/e589b815f3e975f50000007267782410?type=pic"}],"building":[],"typecode":"110101","poiweight":[],"citycode":"0591","adname":"仓山区","children":[],"featured_reviews_remake":[],"tel":"0591-83895376;0591-87939350","id":"B024F05A0S","tag":[],"entr_location":"119.27095,26.054282","adcode":"350104","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":"建新","childtype":[],"atag":[],"name":"闽江公园","shopid":[],"favorite_num":[],"navi_poiid":"G50F024043_36918","distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 00:00-24:00","rating":"4.6","open_time":"24小时营业","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919027100","shopinfo":"2","alias":"北江滨公园","event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-23 07:44:36","website":[],"address":"江滨大道1号","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.266563,26.060830","groupbuy_num":"0","featured_reviews":[]},{"parent":[],"pcode":"350000","keytag":"公园","type":"风景名胜;公园广场;公园","photos":[{"provider":[],"title":"屏山公园","url":"http://store.is.autonavi.com/showpic/10903941a3561279aa60e02bd2e7872a"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B024F02GW3/comment/4e6d5b9ca2c3f144c8e834e6c06cfea9_2048_2048_80.jpg"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B024F02GW3/comment/content_media_external_file_94_1765698226331_88718798.jpg"}],"building":[],"typecode":"110101","poiweight":[],"citycode":"0591","adname":"鼓楼区","children":[],"featured_reviews_remake":[],"tel":"0591-87300690","id":"B024F02GW3","tag":[],"entr_location":"119.296307,26.106901","adcode":"350102","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":"350003","business_area":"新店","childtype":[],"atag":[],"name":"屏山公园","shopid":[],"favorite_num":[],"navi_poiid":"G50F023043_15376","distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"08:30-12:00；15:00-18:00 冬季14:30-18:00 旺季6月到10月","rating":"4.6","open_time":[],"ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919122312","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-23 00:08:32","website":[],"address":"华大街道华大街道华大街道华大街道华大街道福飞南路139号","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.297229,26.104902","groupbuy_num":"0","featured_reviews":[]},{"parent":[],"pcode":"350000","keytag":"文物古迹","type":"风景名胜;公园广场;公园","photos":[{"provider":[],"title":[],"url":"https://store.is.autonavi.com/showpic/03d75dc8d0d4a06d0000000669972076?type=pic"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B0FFIXKUVB/comment/content_media_external_file_100001271_1768545629064_23609713.jpg"},{"provider":[],"title":[],"url":"https://store.is.autonavi.com/showpic/0fa61de83c8e68340000002405748091?type=pic"}],"building":[],"typecode":"110101","poiweight":[],"citycode":"0591","adname":"鼓楼区","children":[],"featured_reviews_remake":[],"tel":[],"id":"B0FFIXKUVB","tag":[],"entr_location":"119.298617,26.096611","adcode":"350102","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":"东街口","childtype":[],"atag":[],"name":"冶山春秋园","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 00:00-24:00","rating":"4.5","open_time":"24小时营业","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919121312","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-23 07:45:58","website":[],"address":"鼓东街道冶山路33号(屏山地铁站D口步行220米)","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.298785,26.096281","groupbuy_num":"0","featured_reviews":[]},{"parent":"B024F01K32","pcode":"350000","keytag":"公园","type":"风景名胜;公园广场;公园","photos":[{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B0FFFHBGSW/comment/C1736205_A1BB_447D_B452_831CE408B540_L0_001_3024_403_1744094862802_46430766.jpg"},{"provider":[],"title":[],"url":"http://store.is.autonavi.com/showpic/e0960ee32f59eda4115ea3a9498eb80b"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B0FFFHBGSW/comment/9F22D510_876C_4669_B62A_5C080EE4368B_L0_001_1500_2000_1744094862794_22007738.jpg"}],"building":[],"typecode":"110101","poiweight":[],"citycode":"0591","adname":"台江区","children":[],"featured_reviews_remake":[],"tel":"0591-83895376","id":"B024F00C0E","tag":[],"entr_location":"119.286912,26.054128","adcode":"350103","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":"建新","childtype":"301","atag":[],"name":"缤纷园","shopid":[],"favorite_num":[],"navi_poiid":"G50F024043_184","distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 08:30-20:00","rating":"4.2","open_time":"08:30-20:00","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919026212","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-16 13:50:57","website":[],"address":"江滨西大道133号闽江公园北园(东南角)","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.287785,26.05298","groupbuy_num":"0","featured_reviews":[]},{"parent":[],"pcode":"350000","keytag":"公园","type":"风景名胜;公园广场;公园","photos":[{"provider":[],"title":[],"url":"http://store.is.autonavi.com/showpic/11e13371b86db2533942ee27b0228647"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/comment/content_service__1769591261160_91543284_1769591273732_03880007.jpg"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B024F04WY7/comment/a0137920-6b5f-48b2-bc38-4c127a511383.png"}],"building":[],"typecode":"110101","poiweight":[],"citycode":"0591","adname":"台江区","children":[],"featured_reviews_remake":[],"tel":"0591-83749457","id":"B024F04WY7","tag":[],"entr_location":"119.314844,26.05183","adcode":"350103","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":[],"childtype":[],"atag":[],"name":"台江区江滨公园","shopid":[],"favorite_num":[],"navi_poiid":"G50F024043_8550","distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 00:00-24:00","rating":"4.5","open_time":"24小时营业","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919026501","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-20 10:12:03","website":[],"address":"西江滨大道1号","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.318621,26.051897","groupbuy_num":"0","featured_reviews":[]},{"parent":"B024F05A0S","pcode":"350000","keytag":"生态公园","type":"风景名胜;公园广场;公园","photos":[{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B024F01Q71/comment/176657062228_1766570623783_35439013.jpg"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B024F01Q71/comment/%5B2025-12-11-23-37-49%5DC13F1096-A7C8-43BB-9D88-5C8120C178D_1765467470881_83240225.jpg"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B024F01Q71/comment/0050023b169a358bd6d2716cface0c2c_2048_2048_80.jpg"}],"building":[],"typecode":"110101","poiweight":[],"citycode":"0591","adname":"仓山区","children":[],"featured_reviews_remake":[],"tel":"0591-83895376","id":"B024F01Q71","tag":[],"entr_location":"119.25652,26.067829","adcode":"350104","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":"建新","childtype":"601","atag":[],"name":"闽江公园南园","shopid":[],"favorite_num":[],"navi_poiid":"G50F024043_660","distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 00:00-24:00","rating":"4.5","open_time":"24小时营业","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919027110","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-09-20 19:30:02","website":[],"address":"闽江大道167号融侨水乡酒店附近","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.264036,26.062188","groupbuy_num":"0","featured_reviews":[]},{"parent":"B0FFI6U1OR","pcode":"350000","keytag":"公园","type":"风景名胜;公园广场;公园","photos":[{"provider":[],"title":"金牛山公园","url":"http://store.is.autonavi.com/showpic/78d4d901ca02c9280a6d422a4ca11051"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B024F003AA/comment/content_media_external_file_100004645_1760630522186_17299807.jpg"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B024F003AA/comment/content_media_external_images_media_100008515_1737765258180_49703958.jpg"}],"building":[],"typecode":"110101","poiweight":[],"citycode":"0591","adname":"鼓楼区","children":[],"featured_reviews_remake":[],"tel":[],"id":"B024F003AA","tag":[],"entr_location":"119.260707,26.076097","adcode":"350102","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":"西洪路","childtype":"301","atag":[],"name":"金牛山公园","shopid":[],"favorite_num":[],"navi_poiid":"G50F024043_355","distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 00:00-24:00","rating":"4.4","open_time":"24小时营业","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919029012","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-20 10:15:40","website":[],"address":"西洪路598号(金牛山地铁站B口步行36米)","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.261094,26.077777","groupbuy_num":"0","featured_reviews":[]},{"parent":[],"pcode":"350000","keytag":"公园","type":"风景名胜;公园广场;公园广场","photos":[{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B024F0VI9P/comment/content_media_external_file_100000486_1768305589999_64059089.jpg"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B024F0VI9P/comment/content_media_external_file_1000030585_ss__1767343644541_77201594.jpg"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B024F0VI9P/comment/4a001a718de7d3315f2a3ea531050180_2048_2048_80.jpg"}],"building":[],"typecode":"110100","poiweight":[],"citycode":"0591","adname":"鼓楼区","children":[],"featured_reviews_remake":[],"tel":[],"id":"B024F0VI9P","tag":[],"entr_location":"119.297946,26.089271","adcode":"350102","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":"东街口","childtype":[],"atag":[],"name":"鼓楼前公园","shopid":[],"favorite_num":[],"navi_poiid":"G50F023043_49709","distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 00:00-24:00","rating":"4.2","open_time":"24小时营业","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919120322","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-08-13 14:36:45","website":[],"address":"鼓西路16号冶金宿舍3座401","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.298015,26.089445","groupbuy_num":"0","featured_reviews":[]},{"parent":[],"pcode":"350000","keytag":"公园","type":"体育休闲服务;运动场馆;健身中心|风景名胜;风景名胜相关;旅游景点","photos":[{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B0HUNA9WHD/comment/content_media_external_file_16446_1770633655717_67225325.jpg"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B0HUNA9WHD/comment/176916643103_1769166434094_82816819.jpg"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B0HUNA9WHD/comment/content_media_external_file_152193_ss__1761808405519_52031706.jpg"}],"building":[],"typecode":"080111|110000","poiweight":[],"citycode":"0591","adname":"鼓楼区","children":[],"featured_reviews_remake":[],"tel":[],"id":"B0HUNA9WHD","tag":[],"entr_location":"119.28587,26.105131","adcode":"350102","pname":"福建省","biz_type":[],"cityname":"福州市","postcode":[],"business_area":"左海","childtype":[],"atag":[],"name":"AONE运动公园","shopid":[],"favorite_num":[],"navi_poiid":"G50F023043_202486","distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 19:00-01:00","rating":"4.4","open_time":"19:00-01:00","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919122212","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-19 14:30:30","website":[],"address":"五凤街道屏西路110号附近","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.285506,26.104941","groupbuy_num":"0","featured_reviews":[]},{"parent":"B024F05AB8","pcode":"350000","keytag":"公园","type":"风景名胜;风景名胜;观景点","photos":[{"provider":[],"title":[],"url":"https://store.is.autonavi.com/showpic/1d5a4646a4bb63410000003134064077?type=pic"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B0LG154LW1/comment/FABD9650_DA65_4C45_A7C2_7CF66F22EEF8_L0_001_1284_94_1765587884580_71549905.jpg"},{"provider":[],"title":[],"url":"https://store.is.autonavi.com/showpic/ff06de08198020cc0000003134028992?type=pic"}],"building":[],"typecode":"110209","poiweight":[],"citycode":"0591","adname":"仓山区","children":[],"featured_reviews_remake":[],"tel":[],"id":"B0LG154LW1","tag":[],"entr_location":[],"adcode":"350104","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":"仓前","childtype":"301","atag":[],"name":"烟台山公园-观景台","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 00:00-24:00","rating":"4.6","open_time":"24小时营业","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919025510","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-09-18 13:34:10","website":[],"address":"仓前街道梅坞路14号烟台山公园","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.315448,26.045094","groupbuy_num":"0","featured_reviews":[]},{"parent":"B0FFKKSL04","pcode":"350000","keytag":"自然风光","type":"风景名胜;公园广场;公园","photos":[{"provider":[],"title":[],"url":"http://aos-cdn-image.amap.com/sns/ugccomment/69254f31-def0-47db-9be1-5bbb14d304d7.jpg"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B0FFGY3FR8/comment/content_media_external_images_media_1000032260_ss__1739859378335_61059763.jpg"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B0FFGY3FR8/comment/content_media_external_file_29173_1766641835212_11332231.jpg"}],"building":[],"typecode":"110101","poiweight":[],"citycode":"0591","adname":"鼓楼区","children":[],"featured_reviews_remake":[],"tel":[],"id":"B0FFGY3FR8","tag":[],"entr_location":"119.270460,26.090469","adcode":"350102","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":"建新","childtype":"301","atag":[],"name":"梅峰山地公园","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 05:30-22:00","rating":"4.4","open_time":"05:30-22:00","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919120121","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-20 10:28:48","website":[],"address":"梅峰路南侧","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.270704,26.090479","groupbuy_num":"0","featured_reviews":[]},{"parent":[],"pcode":"350000","keytag":"3A景区","type":"风景名胜;公园广场;公园","photos":[{"provider":[],"title":[],"url":"http://store.is.autonavi.com/showpic/b79d4bcc1ac856d4f3823ba4d11d4004"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B024F04VKX/comment/190F9B20_0F96_4C42_94FD_2E963EA81F34_L0_001_1500_200_1761872610844_76793268.jpg"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B024F04VKX/comment/content_media_external_file_125310_ss__1763248750267_83646295.jpg"}],"building":[],"typecode":"110101","poiweight":[],"citycode":"0591","adname":"晋安区","children":[],"featured_reviews_remake":[],"tel":"0591-87316904","id":"B024F04VKX","tag":[],"entr_location":"119.324527,26.096698","adcode":"350111","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":"350011","business_area":[],"childtype":[],"atag":[],"name":"金鸡山公园","shopid":[],"favorite_num":[],"navi_poiid":"G50F023043_33946","distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 06:30-18:30","rating":"4.6","open_time":"06:30-18:30","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919122600","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-20 10:12:03","website":[],"address":"金鸡山路60号(三角池地铁站A口步行960米)","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.325742,26.102350","groupbuy_num":"0","featured_reviews":[]},{"parent":[],"pcode":"350000","keytag":"城市公园","type":"风景名胜;公园广场;公园","photos":[{"provider":[],"title":[],"url":"http://store.is.autonavi.com/showpic/e1927780ca0f64491bd09c0e419eed53"}],"building":[],"typecode":"110101","poiweight":[],"citycode":"0591","adname":"鼓楼区","children":[],"featured_reviews_remake":[],"tel":[],"id":"B0H2RH3CFD","tag":[],"entr_location":"119.273881,26.069351","adcode":"350102","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":"建新","childtype":[],"atag":[],"name":"福沁休闲公园","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 00:00-24:00","rating":"4.1","open_time":"24小时营业","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919028112","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-07-10 00:42:52","website":[],"address":"福沁路与西禅巷交叉路口东侧","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.273568,26.069627","groupbuy_num":"0","featured_reviews":[]},{"parent":[],"pcode":"350000","keytag":"公园","type":"风景名胜;公园广场;公园","photos":[{"provider":[],"title":[],"url":"https://store.is.autonavi.com/showpic/73e8199dc2c46fa00000001785266967?type=pic"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B0FFFEZTGH/comment/F408FDCE_0F82_4652_800C_09626CA401C3_L0_001_1500_200_1766624188268_40112895.jpg"},{"provider":[],"title":[],"url":"https://store.is.autonavi.com/showpic/2035efed2099b1930000002595398234?type=pic"}],"building":[],"typecode":"110101","poiweight":[],"citycode":"0591","adname":"仓山区","children":[],"featured_reviews_remake":[],"tel":[],"id":"B0FFFEZTGH","tag":[],"entr_location":"119.311609,26.045193","adcode":"350104","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":[],"childtype":[],"atag":[],"name":"仓前公园","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 00:00-24:00","rating":"4.4","open_time":"24小时营业","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919025412","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-20 10:26:12","website":[],"address":"仓前路北侧的闽江畔(解放大桥边)","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.312026,26.045633","groupbuy_num":"0","featured_reviews":[]},{"parent":[],"pcode":"350000","keytag":"公园","type":"体育休闲服务;休闲场所;游乐场","photos":[{"title":"福州儿童公园","url":"http://store.is.autonavi.com/showpic/3ef4e6a1b8e0d6ba1a2e43d4fa299c71"},{"title":[],"url":"https://aos-comment.amap.com/B024F05X45/comment/content_media_external_file_171_1759825155553_01403314.jpg"},{"title":[],"url":"https://aos-comment.amap.com/B024F05X45/comment/content_media_external_images_media_100017326_1738836180663_33852925.jpg"}],"building":[],"typecode":"080501","poiweight":[],"citycode":"0591","adname":"晋安区","children":[],"featured_reviews_remake":[],"tel":"0591-83326943","id":"B024F05X45","tag":[],"entr_location":"119.294636,26.140525","adcode":"350111","pname":"福建省","biz_type":[],"cityname":"福州市","postcode":[],"business_area":"新店","childtype":[],"atag":[],"name":"福州市儿童公园","shopid":[],"favorite_num":[],"navi_poiid":"G50F023043_39923","distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 06:00-22:00","rating":"4.7","open_time":"06:00-22:00"},"recommend":"0","discount_num":"0","gridcode":"3919126322","shopinfo":"0","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-20 10:27:51","website":[],"address":"新店镇新园路56号","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.296687,26.141354","groupbuy_num":"0","featured_reviews":[]},{"parent":"B024F05X45","pcode":"350000","keytag":"游乐园","type":"体育休闲服务;休闲场所;游乐场","photos":[{"title":[],"url":"https://aos-comment.amap.com/B0FFMGJWHS/comment/3A6ECF20_7420_4DFD_BF5D_965497D8163C_L0_001_1440_88_1763426810383_07654636.jpg"},{"title":[],"url":"https://aos-comment.amap.com/B0FFMGJWHS/comment/content_media_external_file_100011234_1769837704302_44201195.jpg"},{"title":[],"url":"https://aos-comment.amap.com/B0FFMGJWHS/comment/81b860d2a6908d44683784814712073c_2048_2048_80.jpg"}],"building":[],"typecode":"080501","poiweight":[],"citycode":"0591","adname":"晋安区","children":[],"featured_reviews_remake":[],"tel":"0591-87915002","id":"B0FFMGJWHS","tag":[],"entr_location":"119.299528,26.140847","adcode":"350111","pname":"福建省","biz_type":[],"cityname":"福州市","postcode":[],"business_area":"新店","childtype":"301","atag":[],"name":"福州儿童公园游乐园","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 09:00-21:30 10-01至10-07 周一至周日 08:55-21:30","rating":"4.2","open_time":"09:00-21:30 08:55-21:30"},"recommend":"0","discount_num":"0","gridcode":"3919126322","shopinfo":"0","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-09-11 16:48:01","website":[],"address":"新店镇新园路56号福州儿童公园","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.297657,26.141172","groupbuy_num":"0","featured_reviews":[]},{"parent":"B0FFF8ZXS0","pcode":"350000","keytag":"公园","type":"风景名胜;公园广场;公园","photos":[],"building":[],"typecode":"110101","poiweight":[],"citycode":"0591","adname":"马尾区","children":[],"featured_reviews_remake":[],"tel":[],"id":"B0MRA6WXXM","tag":[],"entr_location":[],"adcode":"350105","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":"福州新区","childtype":"301","atag":[],"name":"东江滨儿童公园","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"00:00-24:00, 具体开放时间以现场公示为准","rating":"3.2","open_time":"24小时营业","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919031221","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-09-18 13:56:34","website":[],"address":"东江滨公园","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.406467,26.015158","groupbuy_num":"0","featured_reviews":[]},{"parent":[],"pcode":"350000","keytag":"社区公园","type":"风景名胜;公园广场;公园","photos":[{"provider":[],"title":[],"url":"http://store.is.autonavi.com/showpic/c18bc152901df61322231cef98b1531a"},{"provider":[],"title":[],"url":"http://store.is.autonavi.com/showpic/5434d989a310247a87801f86"},{"provider":[],"title":[],"url":"http://store.is.autonavi.com/showpic/56568879a3104425a5b64c85"}],"building":[],"typecode":"110101","poiweight":[],"citycode":"0591","adname":"长乐区","children":[],"featured_reviews_remake":[],"tel":[],"id":"B024F05MVF","tag":[],"entr_location":"119.504917,25.965721","adcode":"350112","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":"长乐","childtype":[],"atag":[],"name":"长乐儿童公园","shopid":[],"favorite_num":[],"navi_poiid":"G50F025045_3012","distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 00:00-24:00","rating":"3.9","open_time":"24小时营业","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3819745021","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-23 11:03:10","website":[],"address":"爱心路291号","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.505379,25.965511","groupbuy_num":"0","featured_reviews":[]},{"parent":"B024F05X45","pcode":"350000","keytag":"亲子玩乐","type":"体育休闲服务;休闲场所;游乐场","photos":[{"title":[],"url":"https://aos-comment.amap.com/B0FFL0TPML/comment/20260316-0467f4670112d5d89e2efebc-3tqVcBWbMAa6s3m7C2yUQk.jpg"},{"title":[],"url":"https://aos-comment.amap.com/B0FFL0TPML/comment/20260316-0467f4670112d5d89e2efebc-9v6SWCWUPhh7XBqcDsXSYP.jpg"},{"title":[],"url":"https://aos-comment.amap.com/B0FFL0TPML/comment/20260316-0467f4670112d5d89e2efebc-aTUW1hrvqB7mYh1uAPMYO.jpg"}],"building":[],"typecode":"080501","poiweight":[],"citycode":"0591","adname":"晋安区","children":[],"featured_reviews_remake":[],"tel":[],"id":"B0FFL0TPML","tag":[],"entr_location":"119.294877,26.140821","adcode":"350111","pname":"福建省","biz_type":[],"cityname":"福州市","postcode":[],"business_area":"新店","childtype":"301","atag":[],"name":"福州儿童公园-戏水园(暂停营业)","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":"59.00","opentime2":"9月1日至10月7周六至周日及法定节假日开放:08:45-11:30；15:00-19:00, 7月1日至8月31周二,周四,周六至周日开放","rating":"4.2","open_time":[]},"recommend":"0","discount_num":"0","gridcode":"3919127302","shopinfo":"0","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-10 10:03:00","website":[],"address":"新园路56号福州儿童公园内","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.296153,26.141873","groupbuy_num":"0","featured_reviews":[]},{"parent":[],"pcode":"350000","keytag":"动物园","type":"风景名胜;公园广场;动物园","photos":[{"provider":[],"title":[],"url":"http://store.is.autonavi.com/showpic/b7f05e27986d3c2576e764d965c48ebf"},{"provider":[],"title":[],"url":"https://store.is.autonavi.com/showpic/8bb0847e2b7ab2fd0000007178492956?type=pic"},{"provider":[],"title":[],"url":"https://store.is.autonavi.com/showpic/dde6e0c723c15e1b0000002095536104?type=pic"}],"building":[],"typecode":"110102","poiweight":[],"citycode":"0591","adname":"鼓楼区","children":[],"featured_reviews_remake":[],"tel":"0591-83726522;0591-83787118","id":"B024F05T8Z","tag":[],"entr_location":"119.285837,26.088306","adcode":"350102","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":"新店","childtype":[],"atag":[],"name":"福州熊猫世界","shopid":[],"favorite_num":[],"navi_poiid":"G50F023043_37938","distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"01-01至09-27 周一至周日 08:30-17:30 最晚进入17:00；09-28至09-28 周一至周日 全天关闭；09-29至12-31 周一至周日 08:30-17:30 最晚进入17:00","rating":"4.6","open_time":"08:30-17:30 08:30-17:30","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919120212","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-23 09:16:20","website":[],"address":"梦山路88号","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.284614,26.088792","groupbuy_num":"0","featured_reviews":[]},{"parent":[],"pcode":"350000","keytag":"动物园","type":"风景名胜;公园广场;动物园","photos":[{"provider":[],"title":[],"url":"http://store.is.autonavi.com/showpic/387d51ec176cb4299ef3cf545389dcb9"},{"provider":[],"title":"福州动物园","url":"http://store.is.autonavi.com/showpic/273837f701e62a01bab8d233aa7ffe4e"},{"provider":[],"title":"福州动物园","url":"http://store.is.autonavi.com/showpic/0962548bb2056f16ced007be69f19551"}],"building":[],"typecode":"110102","poiweight":[],"citycode":"0591","adname":"晋安区","children":[],"featured_reviews_remake":[],"tel":"0591-83735714;0591-87935145","id":"B024F05EUQ","tag":[],"entr_location":"119.292264,26.141174","adcode":"350111","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":[],"childtype":[],"atag":[],"name":"福州动物园","shopid":[],"favorite_num":[],"navi_poiid":"G50F023043_36188","distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 08:00-18:00 最晚进入16:30","rating":"4.6","open_time":"08:00-18:00","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919126222","shopinfo":"2","alias":"动物园","event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-23 08:17:14","website":[],"address":"新店镇赤桥村新园路100号","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.285226,26.139619","groupbuy_num":"0","featured_reviews":[]},{"parent":"B0H64AHIFE","pcode":"350000","keytag":"动物园","type":"风景名胜;公园广场;动物园","photos":[{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B0L245NZV3/comment/content_media_external_file_100007799_1765516116078_92089885.jpg"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B0L245NZV3/comment/72D1410B_3225_4DAD_BE3D_7F44A5FABA26_L0_001_1080_144_1764060399004_54738498.jpg"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B0L245NZV3/comment/842012E3_AFA3_4443_A01F_CF85036B1BA7_L0_001_1290_171_1765521940721_94318473.jpg"}],"building":[],"typecode":"110102","poiweight":[],"citycode":"0591","adname":"闽侯县","children":[],"featured_reviews_remake":[],"tel":"13358288387","id":"B0L245NZV3","tag":[],"entr_location":"119.191973,26.044784","adcode":"350121","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":[],"childtype":"301","atag":[],"name":"旗旗hi森动物城","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周五 09:30-19:00, 周六至周日及节假日 09:00-20:00","rating":"4.6","open_time":[],"ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919015511","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-17 22:35:56","website":[],"address":"上街镇明德路7-26号","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.191914,26.044537","groupbuy_num":"0","featured_reviews":[]},{"parent":"B024F05EUQ","pcode":"350000","keytag":"动物园","type":"风景名胜;风景名胜相关;旅游景点","photos":[{"provider":[],"title":[],"url":"https://aos-comment.amap.com/comment/content_service__1768815579322_63126935_1768815614899_35594767.jpg"},{"provider":[],"title":[],"url":"https://store.is.autonavi.com/showpic/23d2e5f2350fd73c0000002987724446"}],"building":[],"typecode":"110000","poiweight":[],"citycode":"0591","adname":"晋安区","children":[],"featured_reviews_remake":[],"tel":"0591-83735714","id":"B0FFL1AWQN","tag":[],"entr_location":[],"adcode":"350111","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":"新店","childtype":"301","atag":[],"name":"福州动物园-亚洲象","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 00:00-24:00","rating":"3.6","open_time":"24小时营业","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919126310","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-18 10:29:12","website":[],"address":"新店镇赤桥村7号福州动物园内(东侧)","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.288892,26.138603","groupbuy_num":"0","featured_reviews":[]},{"parent":"B024F05EUQ","pcode":"350000","keytag":"动物园","type":"风景名胜;公园广场;动物园","photos":[],"building":[],"typecode":"110102","poiweight":[],"citycode":"0591","adname":"晋安区","children":[],"featured_reviews_remake":[],"tel":[],"id":"B0KUB7MH46","tag":[],"entr_location":"119.285656,26.137462","adcode":"350111","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":[],"childtype":"301","atag":[],"name":"华南虎馆","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 09:00-22:00","rating":"3.5","open_time":"09:00-22:00","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919126212","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-06-29 09:12:35","website":[],"address":"新店镇赤桥村新园路100号福州动物园内(南侧)","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.285633,26.137619","groupbuy_num":"0","featured_reviews":[]},{"parent":"B024F05EUQ","pcode":"350000","keytag":"动物园","type":"风景名胜;风景名胜相关;旅游景点","photos":[{"provider":[],"title":[],"url":"https://store.is.autonavi.com/showpic/3e90b88045bd7076ba1f20ceb7d2bdd1"}],"building":[],"typecode":"110000","poiweight":[],"citycode":"0591","adname":"晋安区","children":[],"featured_reviews_remake":[],"tel":"0591-83735714","id":"B0FFJ9HOO3","tag":[],"entr_location":[],"adcode":"350111","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":"新店","childtype":"301","atag":[],"name":"福州动物园-百鸟园","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 08:00-16:45","rating":"3.4","open_time":"08:00-16:45","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919126222","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-18 02:31:31","website":[],"address":"新店镇赤桥村新园路100号福州动物园内(东侧)","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.286738,26.140160","groupbuy_num":"0","featured_reviews":[]},{"parent":"B024F05EUQ","pcode":"350000","keytag":"动物园","type":"风景名胜;公园广场;动物园","photos":[],"building":[],"typecode":"110102","poiweight":[],"citycode":"0591","adname":"晋安区","children":[],"featured_reviews_remake":[],"tel":"0591-83735714","id":"B0FFJ9HPU6","tag":[],"entr_location":[],"adcode":"350111","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":[],"childtype":"301","atag":[],"name":"福州动物园-小熊猫","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 08:00-18:00","rating":"3.7","open_time":"08:00-18:00","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919127201","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-09 13:42:56","website":[],"address":"新店镇赤桥村7号福州动物园内(西北角)","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.283184,26.141976","groupbuy_num":"0","featured_reviews":[]},{"parent":"B024F05EUQ","pcode":"350000","keytag":"动物园","type":"风景名胜;公园广场;动物园","photos":[{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B0KB7UJ80N/comment/content_media_external_images_media_1000071473_ss__1738338941072_14783806.jpg"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B0KB7UJ80N/comment/content_media_external_file_100008679_1766647994219_14787429.jpg"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B0KB7UJ80N/comment/content_media_external_images_media_100007146_1738338941072_92487257.jpg"}],"building":[],"typecode":"110102","poiweight":[],"citycode":"0591","adname":"晋安区","children":[],"featured_reviews_remake":[],"tel":[],"id":"B0KB7UJ80N","tag":[],"entr_location":"119.291518,26.139916","adcode":"350111","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":"新店","childtype":"301","atag":[],"name":"福州动物园昆虫馆","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 08:00-18:00","rating":"3.5","open_time":"08:00-18:00","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919126320","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-12 14:06:49","website":[],"address":"福州动物园内(东侧)","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.291095,26.140284","groupbuy_num":"0","featured_reviews":[]},{"parent":"B024F05EUQ","pcode":"350000","keytag":"动物园","type":"风景名胜;公园广场;动物园","photos":[],"building":[],"typecode":"110102","poiweight":[],"citycode":"0591","adname":"晋安区","children":[],"featured_reviews_remake":[],"tel":[],"id":"B0FFJ9HPJF","tag":[],"entr_location":[],"adcode":"350111","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":[],"childtype":"301","atag":[],"name":"河马馆","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 08:00-18:00 最晚进入16:30","rating":"3.3","open_time":"08:00-18:00","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919126222","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-09-01 04:49:33","website":[],"address":"新店镇赤桥村7号福州动物园内(西北角)","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.283503,26.140699","groupbuy_num":"0","featured_reviews":[]},{"parent":"B024F05EUQ","pcode":"350000","keytag":"动物园","type":"风景名胜;公园广场;动物园","photos":[],"building":[],"typecode":"110102","poiweight":[],"citycode":"0591","adname":"晋安区","children":[],"featured_reviews_remake":[],"tel":"0591-83735714","id":"B0FFG0EEVU","tag":[],"entr_location":"119.292131,26.141183","adcode":"350111","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":"新店","childtype":"301","atag":[],"name":"福州动物园-长颈鹿馆","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 08:00-18:00","rating":"3.3","open_time":"08:00-18:00","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919126310","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-17 01:12:15","website":[],"address":"新店镇赤桥村新园路100号福州动物园内(东侧)","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.290370,26.138838","groupbuy_num":"0","featured_reviews":[]},{"parent":"B024F05EUQ","pcode":"350000","keytag":"动物园","type":"风景名胜;风景名胜相关;旅游景点","photos":[],"building":[],"typecode":"110000","poiweight":[],"citycode":"0591","adname":"晋安区","children":[],"featured_reviews_remake":[],"tel":"0591-83735714","id":"B0FFJ4PYPB","tag":[],"entr_location":"119.292325,26.140171","adcode":"350111","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":"新店","childtype":"301","atag":[],"name":"福州动物园-亚洲黑熊","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 00:00-24:00","rating":"3.1","open_time":"24小时营业","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919126310","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-09 12:56:27","website":[],"address":"新店镇赤桥村7号福州动物园内(东侧)","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.288227,26.138450","groupbuy_num":"0","featured_reviews":[]},{"parent":"B024F05EUQ","pcode":"350000","keytag":"动物园","type":"风景名胜;风景名胜相关;旅游景点","photos":[{"provider":[],"title":[],"url":"http://store.is.autonavi.com/showpic/f7fb359b6d8c80ac86366ea8ebfc1a93"}],"building":[],"typecode":"110000","poiweight":[],"citycode":"0591","adname":"晋安区","children":[],"featured_reviews_remake":[],"tel":"0591-83735714","id":"B0FFL3LVIZ","tag":[],"entr_location":[],"adcode":"350111","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":[],"childtype":"301","atag":[],"name":"福州动物园-猩猩","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 08:00-18:00","rating":"3.3","open_time":"08:00-18:00","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919126221","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-09 12:11:03","website":[],"address":"新店镇赤桥村7号福州动物园内(西北角)","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.281828,26.141339","groupbuy_num":"0","featured_reviews":[]},{"parent":"B024F05EUQ","pcode":"350000","keytag":"动物园","type":"风景名胜;风景名胜相关;旅游景点","photos":[],"building":[],"typecode":"110000","poiweight":[],"citycode":"0591","adname":"晋安区","children":[],"featured_reviews_remake":[],"tel":"0591-83735714","id":"B0FFK7P2OZ","tag":[],"entr_location":[],"adcode":"350111","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":[],"childtype":"301","atag":[],"name":"福州动物园-羊驼","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"08:00-18:00 最晚进入16:30, 具体开放时间以现场公示为准","rating":"2.7","open_time":"08:00-18:00","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919126221","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-09 11:40:39","website":[],"address":"新店镇赤桥村7号福州动物园内(西侧)","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.282287,26.140578","groupbuy_num":"0","featured_reviews":[]},{"parent":"B024F05EUQ","pcode":"350000","keytag":"动物园","type":"风景名胜;公园广场;动物园","photos":[],"building":[],"typecode":"110102","poiweight":[],"citycode":"0591","adname":"晋安区","children":[],"featured_reviews_remake":[],"tel":[],"id":"B0L0AYB96F","tag":[],"entr_location":[],"adcode":"350111","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":[],"childtype":"301","atag":[],"name":"狼馆","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"08:00-18:00 最晚进入16:30, 具体开放时间以现场公示为准","rating":"3.1","open_time":"08:00-18:00","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919126212","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-12 14:03:33","website":[],"address":"新店镇赤桥村新园路100号福州动物园内(南侧)","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.285078,26.137433","groupbuy_num":"0","featured_reviews":[]},{"parent":"B024F05EUQ","pcode":"350000","keytag":"动物园","type":"风景名胜;风景名胜相关;旅游景点","photos":[],"building":[],"typecode":"110000","poiweight":[],"citycode":"0591","adname":"晋安区","children":[],"featured_reviews_remake":[],"tel":[],"id":"B0FFKDSDSN","tag":[],"entr_location":[],"adcode":"350111","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":"新店","childtype":"301","atag":[],"name":"福州动物园-白犀","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":[],"rating":"2.5","open_time":[],"ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919126320","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-09-08 04:27:28","website":[],"address":"赤桥路与新园路交叉口西380米","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.289116,26.139692","groupbuy_num":"0","featured_reviews":[]},{"parent":"B024F05EUQ","pcode":"350000","keytag":"动物园","type":"风景名胜;风景名胜相关;旅游景点","photos":[{"provider":[],"title":[],"url":"https://store.is.autonavi.com/showpic/3ffc2c3b116457fbb56162fa57c25892"}],"building":[],"typecode":"110000","poiweight":[],"citycode":"0591","adname":"晋安区","children":[],"featured_reviews_remake":[],"tel":"0591-83735714","id":"B0FFLD64G2","tag":[],"entr_location":"119.286467,26.137808","adcode":"350111","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":"新店","childtype":"301","atag":[],"name":"福州动物园-猞猁","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":[],"rating":"2.9","open_time":[],"ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919126212","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-09 13:15:56","website":[],"address":"新店镇赤桥村7号福州动物园内(东南角)","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.286480,26.137791","groupbuy_num":"0","featured_reviews":[]},{"parent":"B024F05EUQ","pcode":"350000","keytag":"动物园","type":"风景名胜;公园广场;动物园","photos":[],"building":[],"typecode":"110102","poiweight":[],"citycode":"0591","adname":"晋安区","children":[],"featured_reviews_remake":[],"tel":[],"id":"B0L0AYAWLW","tag":[],"entr_location":[],"adcode":"350111","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":[],"childtype":"301","atag":[],"name":"狮馆","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":[],"rating":"2.5","open_time":[],"ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919126212","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-12 14:13:04","website":[],"address":"新店镇赤桥村新园路100号福州动物园内(南侧)","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.285492,26.137541","groupbuy_num":"0","featured_reviews":[]},{"parent":"B024F05EUQ","pcode":"350000","keytag":"动物园","type":"风景名胜;公园广场;动物园","photos":[],"building":[],"typecode":"110102","poiweight":[],"citycode":"0591","adname":"晋安区","children":[],"featured_reviews_remake":[],"tel":[],"id":"B0KRKLC95L","tag":[],"entr_location":[],"adcode":"350111","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":[],"childtype":"301","atag":[],"name":"鸵鸟馆","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":[],"rating":"2.6","open_time":[],"ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919126221","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-12 14:12:56","website":[],"address":"新店镇赤桥村新园路100号福州动物园(西北角)","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.283292,26.140496","groupbuy_num":"0","featured_reviews":[]},{"parent":"B024F05EUQ","pcode":"350000","keytag":"动物园","type":"风景名胜;风景名胜相关;旅游景点","photos":[],"building":[],"typecode":"110000","poiweight":[],"citycode":"0591","adname":"晋安区","children":[],"featured_reviews_remake":[],"tel":"0591-83735714","id":"B0FFK7M3CG","tag":[],"entr_location":[],"adcode":"350111","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":[],"childtype":"301","atag":[],"name":"福州动物园-赤猴","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":[],"rating":"2.1","open_time":[],"ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919126221","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-09 13:25:53","website":[],"address":"新店镇赤桥村7号福州动物园内(西北角)","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.282152,26.141235","groupbuy_num":"0","featured_reviews":[]},{"parent":"B0FFLDKD6F","pcode":"350000","keytag":"公园","type":"风景名胜;公园广场;公园","photos":[{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B0FFFDFXHF/comment/20260314-30a70fd4d46180fdaf7e5ca0-eo6BDnsnWe8SXYIRN10Mr.jpg"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B0FFFDFXHF/comment/content_media_external_images_media_1000002791_ss_2_1676432417426_d711aa58.jpg"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B0FFFDFXHF/comment/3384fb6fd3950b22bfdcf0fb70587b04_2048_2048_80.jpg"}],"building":[],"typecode":"110101","poiweight":[],"citycode":"0591","adname":"晋安区","children":[],"featured_reviews_remake":[],"tel":[],"id":"B0FFFDFXHF","tag":[],"entr_location":"119.347104,26.097153","adcode":"350111","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":[],"childtype":"301","atag":[],"name":"牛岗山公园","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 06:00-22:00","rating":"4.7","open_time":"06:00-22:00","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919122701","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-20 10:26:03","website":[],"address":"鹤林路牛岗山(竹屿地铁站A2口步行843米)","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.344918,26.100066","groupbuy_num":"0","featured_reviews":[]},{"parent":"B0H64AHIFE","pcode":"350000","keytag":"儿童运动探险","type":"体育休闲服务;休闲场所;游乐场","photos":[{"title":[],"url":"https://aos-comment.amap.com/B0LG9LT0RY/comment/F89A66DC_25E5_46D9_BBD4_2C630EF22E62_L0_001_1500_200_1748906071243_44312275.jpg"},{"title":[],"url":"https://aos-comment.amap.com/B0LG9LT0RY/comment/content_media_external_file_100005601_1746781516126_59154185.jpg"},{"title":[],"url":"https://aos-comment.amap.com/B0LG9LT0RY/comment/B8BAA1D9_4BE3_4294_B7D4_001D883E2A60_L0_001_1500_200_1765106944709_89983875.jpg"}],"building":[],"typecode":"080501","poiweight":[],"citycode":"0591","adname":"闽侯县","children":[],"featured_reviews_remake":[],"tel":"17359166686","id":"B0LG9LT0RY","tag":[],"entr_location":"119.195069,26.042592","adcode":"350121","pname":"福建省","biz_type":[],"cityname":"福州市","postcode":[],"business_area":[],"childtype":"302","atag":[],"name":"旗山湖旗旗探险乐园","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":"118.00","opentime2":"周一至周五 09:30-12:00,13:00-20:00；周六至周日 09:00-20:00","rating":"4.6","open_time":"09:30-12:00 13:00-20:00"},"recommend":"0","discount_num":"0","gridcode":"3919015501","shopinfo":"0","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-23 06:51:30","website":[],"address":"上街镇明德路7-22号","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.194759,26.041993","groupbuy_num":"0","featured_reviews":[]},{"parent":[],"pcode":"350000","keytag":"儿童主题乐园","type":"风景名胜;公园广场;动物园","photos":[{"provider":[],"title":[],"url":"https://store.is.autonavi.com/showpic/fe481d2ee284af550000005287912695?type=pic"},{"provider":[],"title":[],"url":"https://store.is.autonavi.com/showpic/6ed9c9065d4b20370000002948562940?type=pic"},{"provider":[],"title":[],"url":"https://aos-comment.amap.com/B0L0GM2VII/comment/content_media_external_file_1000013510_ss__1770220545703_58132909.jpg"}],"building":[],"typecode":"110102","poiweight":[],"citycode":"0591","adname":"闽侯县","children":[],"featured_reviews_remake":[],"tel":"19559138786","id":"B0L0GM2VII","tag":[],"entr_location":"119.221210,26.050485","adcode":"350121","pname":"福建省","biz_type":"tour","cityname":"福州市","postcode":[],"business_area":[],"childtype":[],"atag":[],"name":"Wow Park 哇呜动物乐园(福州店)","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":"79.00","opentime2":"周二至周日 09:30-18:30","rating":"4.7","open_time":"09:30-18:30","ticket_ordering":"0"},"recommend":"0","discount_num":"0","gridcode":"3919016702","shopinfo":"2","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-22 13:18:51","website":[],"address":"上街镇厚庭村195-5号","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.221202,26.050311","groupbuy_num":"0","featured_reviews":[]},{"parent":"B0H22AK6K0","pcode":"350000","keytag":"儿童乐园","type":"体育休闲服务;休闲场所;游乐场","photos":[{"title":[],"url":"https://store.is.autonavi.com/showpic/ce8f6a569cf61bd70000000981086901?type=pic"},{"title":[],"url":"https://store.is.autonavi.com/showpic/26e4c530233d71f70000000713060123?type=pic"},{"title":[],"url":"https://store.is.autonavi.com/showpic/2c07190c119cbc3c0000000713046447?type=pic"}],"building":[],"typecode":"080501","poiweight":[],"citycode":"0591","adname":"闽侯县","children":[],"featured_reviews_remake":[],"tel":[],"id":"B0MBLUTEF7","tag":[],"entr_location":"119.264279,25.972226","adcode":"350121","pname":"福建省","biz_type":[],"cityname":"福州市","postcode":[],"business_area":[],"childtype":"202","atag":[],"name":"萌龙部落主题乐园","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":"83.00","opentime2":"周一至周日 10:00-21:00","rating":"4.4","open_time":"10:00-21:00"},"recommend":"0","discount_num":"0","gridcode":"3819726110","shopinfo":"0","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-22 13:54:26","website":[],"address":"福通路88号砂之船小镇F3层","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.264275,25.972025","groupbuy_num":"0","featured_reviews":[]},{"parent":"B0GDSHRF68","pcode":"350000","keytag":"儿童乐园","type":"体育休闲服务;休闲场所;游乐场","photos":[{"title":[],"url":"https://aos-comment.amap.com/B0L6AL0KI7/comment/176915405235_1769154056642_46809093.jpg"},{"title":[],"url":"https://aos-comment.amap.com/B0L6AL0KI7/comment/176915405596_1769154056644_24312764.jpg"},{"title":[],"url":"http://store.is.autonavi.com/showpic/0ef500a7409d1202457711ba2355930b"}],"building":[],"typecode":"080501","poiweight":[],"citycode":"0591","adname":"仓山区","children":[],"featured_reviews_remake":[],"tel":"18020887030","id":"B0L6AL0KI7","tag":[],"entr_location":"119.321048,26.031732","adcode":"350104","pname":"福建省","biz_type":[],"cityname":"福州市","postcode":[],"business_area":"福建师大","childtype":"202","atag":[],"name":"牧羊宝贝儿童乐园","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":"49.00","opentime2":"周一至周日 10:00-22:00","rating":"4.0","open_time":"10:00-22:00"},"recommend":"0","discount_num":"0","gridcode":"3919023522","shopinfo":"0","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-09-13 11:36:35","website":[],"address":"利民路11号福州中骏世界城F2层","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.321181,26.031744","groupbuy_num":"0","featured_reviews":[]},{"parent":[],"pcode":"350000","keytag":"科技馆","type":"科教文化服务;科技馆;科技馆","photos":[{"title":[],"url":"https://store.is.autonavi.com/showpic/1f1404324f4af76a0000003134798222?type=pic"},{"title":[],"url":"https://store.is.autonavi.com/showpic/3b1998d0f20d72330000002483934543?type=pic"},{"title":[],"url":"https://store.is.autonavi.com/showpic/8bb5118f843cfcc5ced7b010760f3f9a"}],"building":[],"typecode":"140600","poiweight":[],"citycode":"0591","adname":"晋安区","children":[],"featured_reviews_remake":[],"tel":"0591-83969716","id":"B0HG0KUGKC","tag":[],"entr_location":"119.348065,26.097035","adcode":"350111","pname":"福建省","biz_type":[],"cityname":"福州市","postcode":[],"business_area":[],"childtype":[],"atag":[],"name":"福州科技馆","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周二至周日 09:00-17:00 最晚进入16:45, 周一 全天关闭, 节假日开放时间以官方通知为准","rating":"4.9","open_time":[]},"recommend":"0","discount_num":"0","gridcode":"3919121722","shopinfo":"0","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-23 09:14:09","website":[],"address":"鹤林路65号","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.349191,26.098035","groupbuy_num":"0","featured_reviews":[]},{"parent":[],"pcode":"350000","keytag":"科技馆","type":"科教文化服务;科技馆;科技馆","photos":[{"title":[],"url":"http://store.is.autonavi.com/showpic/f63f96c7da56ba3a2ba06b514367d7ca"},{"title":[],"url":"https://aos-comment.amap.com/B024F02Y0B/comment/c3c41e0e1e5df363f59c981d7af02007_2048_2048_80.jpg"},{"title":[],"url":"https://aos-comment.amap.com/B024F02Y0B/comment/content_media_external_images_media_1000118853_ss__1759547613337_78388854.jpg"}],"building":[],"typecode":"140600","poiweight":[],"citycode":"0591","adname":"鼓楼区","children":[],"featured_reviews_remake":[],"tel":"0591-83312712","id":"B024F02Y0B","tag":[],"entr_location":"119.309628,26.075664","adcode":"350102","pname":"福建省","biz_type":[],"cityname":"福州市","postcode":[],"business_area":"广达路","childtype":[],"atag":[],"name":"福建省科技馆","shopid":[],"favorite_num":[],"navi_poiid":"G50F024043_170266","distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周三至周日 09:00-17:00；周一至周二 全天关闭","rating":"4.7","open_time":[]},"recommend":"0","discount_num":"0","gridcode":"3919029402","shopinfo":"0","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-23 07:21:48","website":"www.fjkjg.com","address":"古田路89号(水部地铁站C口步行420米)","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.310296,26.075864","groupbuy_num":"0","featured_reviews":[]},{"parent":"B0FFKBUX1A","pcode":"350000","keytag":"科技馆","type":"科教文化服务;科技馆;科技馆","photos":[{"title":[],"url":"https://aos-comment.amap.com/B0FFHN16FZ/comment/bd0ed301b8e5ea6d18248878df5d30c9_2048_2048_80.jpg"},{"title":[],"url":"https://aos-comment.amap.com/B0FFHN16FZ/comment/105b979d88b1c465c7edfa26f90c0054_2048_2048_80.jpg"},{"title":[],"url":"https://aos-comment.amap.com/B0FFHN16FZ/comment/e034cc31f9d5ebfd37aa009063ec0648_2048_2048_80.jpg"}],"building":[],"typecode":"140600","poiweight":[],"citycode":"0591","adname":"闽侯县","children":[],"featured_reviews_remake":[],"tel":"0591-22069336","id":"B0FFHN16FZ","tag":[],"entr_location":"119.146689,26.137176","adcode":"350121","pname":"福建省","biz_type":[],"cityname":"福州市","postcode":[],"business_area":"甘蔗","childtype":"202","atag":[],"name":"闽侯县科技中心","shopid":[],"favorite_num":[],"navi_poiid":"G50F023042_16842","distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 08:00-20:00","rating":"4.5","open_time":"08:00-20:00"},"recommend":"0","discount_num":"0","gridcode":"3919116102","shopinfo":"0","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-12 00:24:57","website":[],"address":"滨江商务中心","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.147273,26.136068","groupbuy_num":"0","featured_reviews":[]},{"parent":"B0H6Y674SR","pcode":"350000","keytag":"科技馆","type":"科教文化服务;科技馆;科技馆","photos":[],"building":[],"typecode":"140600","poiweight":[],"citycode":"0591","adname":"鼓楼区","children":[],"featured_reviews_remake":[],"tel":[],"id":"B0IDLASN95","tag":[],"entr_location":"119.269837,26.111353","adcode":"350102","pname":"福建省","biz_type":[],"cityname":"福州市","postcode":[],"business_area":"五凤","childtype":"202","atag":[],"name":"福州软件园黑科技馆","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":[],"rating":"3.8","open_time":[]},"recommend":"0","discount_num":"0","gridcode":"3919123111","shopinfo":"0","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-10-12 10:25:32","website":[],"address":"福州软件园数谷大厦","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.270255,26.111488","groupbuy_num":"0","featured_reviews":[]},{"parent":[],"pcode":"350000","keytag":"科技馆","type":"科教文化服务;科技馆;科技馆","photos":[{"title":[],"url":"https://store.is.autonavi.com/showpic/4898fc8af729515764d21c673112849c"},{"title":[],"url":"https://aos-comment.amap.com/B0FFG21U6L/comment/b05cd0e2-54cb-4854-9918-4a66996eec5d.png"},{"title":[],"url":"https://aos-comment.amap.com/B0FFG21U6L/comment/3693860d-7b24-4ba3-836f-c5057b6bc270.png"}],"building":[],"typecode":"140600","poiweight":[],"citycode":"0591","adname":"仓山区","children":[],"featured_reviews_remake":[],"tel":"0591-83312712","id":"B0FFG21U6L","tag":[],"entr_location":"119.359892,26.033436","adcode":"350104","pname":"福建省","biz_type":[],"cityname":"福州市","postcode":[],"business_area":[],"childtype":[],"atag":[],"name":"福建省科技馆新馆(建设中)","shopid":[],"favorite_num":[],"navi_poiid":[],"distance":[],"importance":[],"biz_ext":{"cost":[],"opentime2":"周一至周日 08:00-18:00","rating":"4.1","open_time":"08:00-18:00"},"recommend":"0","discount_num":"0","gridcode":"3919024802","shopinfo":"0","alias":[],"event":[],"indoor_map":"0","email":[],"timestamp":"2026-07-18 10:14:38","website":[],"address":"海峡会展中心西侧(会展中心地铁站A东北口步行400米)","space_num":[],"match":"0","indoor_data":{"cmsid":[],"truefloor":[],"cpid":[],"floor":[]},"exit_location":[],"location":"119.360355,26.034630","groupbuy_num":"0","featured_reviews":[]}];   // 每日定时任务生成的自包含快照（amap 原始 POI 数组）；非空时 init 优先使用，免联网
+const SEED_PLACES = [
+ {id:1,name:"乌龙江湿地公园",sub:"淮安段",lat:26.050,lng:119.262,w:"sunny cloudy",t:"morning evening",indoor:0,shade:0,purpose:"energy sand",play:"草地奔跑、江边散步、挖沙、野餐、放风筝",sell:"最近最省心，开阔人少、免费、好推车，天然放电场",time:"上午/傍晚 2-3h",food:"园内无餐厅；江边草坪适合野餐，回农林大/学生街吃饭约10min"},
+ {id:2,name:"福州沙滩公园",sub:"乌龙江沙滩·淮安",lat:26.045,lng:119.255,w:"sunny cloudy",t:"morning evening",indoor:0,shade:0,purpose:"sand energy",play:"人工沙滩玩沙、放风筝、野餐、江边浅水戏水",sell:"就在家旁边，真有沙的'小海滩'，免费，宝宝玩沙最开心；河岸无护栏、几乎无遮阳，自备遮阳棚+盯紧水边",time:"上午/傍晚 2-3h",food:"无餐饮，适合自带野餐垫；就近学生街/农林大吃饭"},
+ {id:3,name:"闽江公园",sub:"南园/北园",lat:26.050,lng:119.305,w:"sunny cloudy hot",t:"evening",indoor:0,shade:1,purpose:"energy walk",play:"沿江步道、儿童小乐园、看船",sell:"平坦无台阶、江风凉快、树多",time:"傍晚 1.5-2h",food:"沿线有小吃/咖啡；北园近金山万达吃饭方便"},
+ {id:4,name:"烟台山公园",sub:"仓山",lat:26.045,lng:119.315,w:"sunny cloudy hot",t:"morning afternoon",indoor:1,shade:1,purpose:"walk",play:"洋房街区漫步、大草坪、咖啡店歇脚",sell:"路面平、树荫多不晒、推车友好、好拍照；咖啡店可避暑/哺乳",time:"上午/下午 2-3h",food:"街区餐厅咖啡多，环境好（价位偏高），可堂食歇脚"},
+ {id:5,name:"西湖+左海公园",sub:"鼓楼",lat:26.090,lng:119.300,w:"sunny cloudy hot",t:"morning",indoor:0,shade:1,purpose:"walk energy",play:"脚踏船、喂鱼、大草坪、看鸽",sell:"经典老牌、树荫浓、可游船、有母婴室",time:"上午 半天",food:"园内小吃摊，大草坪可野餐；周边省府/湖东路餐饮多"},
+ {id:6,name:"金牛山·福道",sub:"平缓段",lat:26.082,lng:119.272,w:"sunny cloudy hot",t:"evening",indoor:0,shade:0,purpose:"walk energy",play:"空中栈道散步、看江景",sell:"部分段平缓可推车；带娃只走平缓段别爬全程",time:"傍晚 1.5-2h",food:"沿途无餐厅，金牛山脚有餐饮，建议回程吃"},
+ {id:7,name:"福州儿童公园",sub:"新店",lat:26.130,lng:119.300,w:"sunny cloudy",t:"morning",indoor:0,shade:1,purpose:"energy cognitive",play:"沙池、小滑梯、戏水区、旋转木马、小火车",sell:"专为儿童设计，设施矮矮安全，分龄游乐",time:"上午 半天",food:"园内有小卖部；新店片区吃饭方便，近五四北泰禾"},
+ {id:8,name:"福州动物园",sub:"新店",lat:26.132,lng:119.306,w:"sunny cloudy",t:"morning",indoor:0,shade:1,purpose:"cognitive",play:"看大象/长颈鹿/小熊猫、萌宠区",sell:"认知启蒙神器，动物动静吸引注意力；配好午睡",time:"上午 半天",food:"园内有简餐；新店/五四北泰禾吃饭"},
+ {id:9,name:"三坊七巷",sub:"鼓楼",lat:26.085,lng:119.300,w:"sunny cloudy",t:"morning evening",indoor:0,shade:0,purpose:"walk",play:"逛老街、吃小吃、看建筑",sell:"文化氛围好，但人多推车不便无遮阳，仅清晨/傍晚浅逛",time:"清晨/傍晚 1.5h",food:"老街小吃多，游人拥挤，浅吃即可；商圈内有母婴室"},
+ {id:10,name:"永泰·欧乐堡",sub:"海洋世界",lat:25.880,lng:119.180,w:"sunny cloudy rain hot",t:"morning afternoon evening",indoor:1,shade:1,purpose:"cognitive indoor",play:"海洋动物、人鱼表演、互动展缸",sell:"室内空调不晒，夏天/雨天救星；表演有固定场次",time:"1 天",food:"馆内有餐厅，配套完善；县城闽菜小吃也多"},
+ {id:11,name:"贵安新天地",sub:"连江",lat:26.220,lng:119.450,w:"sunny cloudy rain hot",t:"morning afternoon evening",indoor:1,shade:1,purpose:"indoor relax energy",play:"欢乐世界、水世界、溪山温泉",sell:"综合度假，温泉全家放松；水世界对1岁偏小玩浅水区",time:"1 天",food:"新天地内餐饮+温泉度假配套，吃喝一体"},
+ {id:12,name:"罗源湾",sub:"海洋世界",lat:26.480,lng:119.550,w:"sunny cloudy rain hot",t:"morning afternoon evening",indoor:1,shade:1,purpose:"cognitive indoor",play:"海洋馆、海上乐园、冰雕馆",sell:"同欧乐堡，更偏北；冰雕馆太冷宝宝别进",time:"1 天",food:"馆内/滨海餐饮，县城闽菜可补充"},
+ {id:13,name:"平潭岛",sub:"龙王头",lat:25.500,lng:119.800,w:"sunny cloudy",t:"morning afternoon evening",indoor:0,shade:0,purpose:"sand walk relax",play:"沙滩踏浪、北部生态廊道、风车田",sell:"真正看海，玩沙玩水最开心；路程远建议住一晚",time:"1-2 天",food:"县城/龙王头海鲜大排档+品牌餐饮，玩沙后就近吃（建议住一晚）"},
+ {id:14,name:"花海公园",sub:"南江滨·仓山",lat:26.040,lng:119.335,w:"sunny cloudy hot",t:"morning afternoon evening",indoor:0,shade:0,purpose:"walk energy",play:"大片花海、大草坪奔跑、江边散步",sell:"四季有花、开阔好跑、免费；正午少遮阴凉爽时段去",time:"上午/下午/傍晚 2h",food:"无餐饮，大草坪可野餐；南江滨附近吃饭"},
+ {id:15,name:"梁厝街区",sub:"三江口·仓山",lat:26.020,lng:119.355,w:"sunny cloudy hot",t:"morning afternoon",indoor:0,shade:1,purpose:"walk cognitive",play:"古厝漫步、田园草坪、看稻田",sell:"新晋网红、路面平推车友好、有树荫、人少清净",time:"上午/下午 2-3h",food:"街区有简餐咖啡，草坪可野餐，人少清净"},
+ {id:16,name:"飞凤山奥体公园",sub:"仓山",lat:26.030,lng:119.330,w:"sunny cloudy hot",t:"morning evening",indoor:0,shade:0,purpose:"energy",play:"大草坪放风、山坡滑梯、散步",sell:"超大草坪放电首选、免费；少遮阴凉爽时段去",time:"上午/傍晚 2h",food:"草坪适合野餐；周边奥体/浦上吃饭方便"},
+ {id:17,name:"福州国家森林公园",sub:"新店",lat:26.135,lng:119.330,w:"sunny cloudy hot",t:"morning",indoor:0,shade:1,purpose:"cognitive energy",play:"林间步道、大草坪、认植物",sell:"树木茂密超阴凉、天然氧吧、认知植物；配好午睡",time:"上午 半天",food:"园内有小卖部；新店片区吃饭"},
+ {id:18,name:"省少儿图书馆",sub:"鼓楼·东街",lat:26.085,lng:119.305,w:"sunny cloudy rain hot",t:"morning afternoon",indoor:1,shade:1,purpose:"cognitive indoor",play:"绘本区阅读、互动设施",sell:"室内空调免费、雨天/闷热救星、培养阅读；需保持安静",time:"上午/下午 2h",food:"东街口商圈，餐饮齐全（母婴室+儿童餐）"},
+ {id:19,name:"商场母婴中心",sub:"仓山万达/爱琴海",lat:26.035,lng:119.265,w:"sunny cloudy rain hot",t:"morning afternoon evening",indoor:1,shade:1,purpose:"indoor relax",play:"母婴室哺乳、室内游走、吃饭",sell:"空调避暑、哺乳换尿布方便、吃饭轻松；纯遛娃偏低龄",time:"全天 2h",food:"本身就是商场，吃饭+哺乳+换尿布一体，最省心"},
+ {id:20,name:"海峡文化艺术中心",sub:"三江口",lat:26.030,lng:119.365,w:"sunny cloudy rain hot",t:"morning afternoon evening",indoor:1,shade:1,purpose:"walk indoor",play:"建筑打卡、江景散步、室内展厅",sell:"造型出片、室内可避雨、江边平坦；展陈偏成人",time:"上午/下午 2h",food:"三江口配套较少，建议自带简餐或回程吃饭"},
+ {id:21,name:"连江·奇达村",sub:"海边渔村",lat:26.430,lng:119.830,w:"sunny cloudy",t:"morning afternoon",indoor:0,shade:0,purpose:"sand walk",play:"海边栈道、看渔村、踏浪",sell:"小众海边、出片、玩水；路程远配午睡",time:"1 天",food:"渔村有海鲜大排档，简易；规模小选择不多"},
+ {id:22,name:"鼓岭",sub:"鼓山山上·避暑",lat:26.075,lng:119.370,w:"sunny cloudy hot",t:"morning afternoon",indoor:0,shade:1,purpose:"relax",play:"山上漫步、看云海、亲子民宿",sell:"夏天比市区凉快约10度、树多；多坡道背带更合适",time:"上午/下午 半天",food:"山上民宿/餐厅简餐，可吃饭歇脚"}
+];
+/* 活清单：默认用兜底种子占位；打开页面时优先恢复「今日快照」，否则触发高德实时检索生成当日清单（见 init / mergeLatestPlaces） */
+let PLACES = SEED_PLACES.map(p=>({...p}));
+
+const sel={weather:null,time:null,baby:null,purpose:null,distance:null,onlyFit:null};
+let start={lat:26.062,lng:119.278,name:"农林大学"};
+let savedStarts=[];
+let sortMode='fit', pickMode=false;   // 默认按🍼适龄适配度降序排序
+let minKm=0, maxKm=30;   // 搜索距离区间(km)：默认 0–30；同时作为清单的硬显示窗口（窗口外不显示）；最大可设 80
+let knownNew=new Set();   // 已出现过的新地点核心名，避免每天重复打🌟角标
+/* 共享 Key：粘贴你自己的高德「Web 服务」Key 到下面引号内，保存文件后，任何人打开此 HTML 都能直接使用地图与实时检索，不必各自填写 */
+const EMBEDDED_AMAP_KEY='b18549a937a71f7c108e8fb72b510ee5';
+function getAmapKey(){ return (EMBEDDED_AMAP_KEY||'').trim() || (localStorage.getItem('amapKey')||'').trim(); }
+const labels={weather:{sunny:'晴天',cloudy:'多云/阴',rain:'下雨',hot:'闷热大太阳'},time:{morning:'上午',afternoon:'下午',evening:'傍晚'},baby:{fresh:'精神饱满',normal:'一般般',nap:'快到午睡'},purpose:{energy:'放电跑跳',cognitive:'认知启蒙',indoor:'避暑室内',sand:'玩沙看海',walk:'散步拍照',relax:'亲子放松'},distance:{walk:'超短距离(散步遛娃)',near:'就近(20min内)',any:'远近都行'},onlyFit:{'1':'仅看适龄(≥一般)'}};
+
+/* ===== 年龄（以出生日期为基数自动更新，仍可手动改） ===== */
+const BIRTH=new Date(2025,7,2); // 2025-08-02
+function getAgeMonths(){const y=Math.max(0,parseInt(document.getElementById('ageY').value||'0',10));const m=Math.max(0,Math.min(11,parseInt(document.getElementById('ageM').value||'0',10)));return y*12+m;}
+function ageLabel(months){const y=Math.floor(months/12),m=months%12;return (y>0?y+'岁':'')+(m>0?m+'个月':(y===0?'0个月':''));}
+/* 按出生日期自动算出当前月龄，填回输入框（每日 8 点检索时也会重算） */
+function autoFillAge(){
+  const now=new Date();
+  let months=(now.getFullYear()-BIRTH.getFullYear())*12+(now.getMonth()-BIRTH.getMonth());
+  if(now.getDate()<BIRTH.getDate()) months--;
+  months=Math.max(0,months);
+  document.getElementById('ageY').value=Math.floor(months/12);
+  document.getElementById('ageM').value=months%12;
+  saveAge();
+}
+function applyAge(){
+  const months=getAgeMonths();
+  let stage, nap, tip;
+  if(months<12){stage='婴儿期';nap='仍需多次小睡';tip='以躺卧观察、轻微感官刺激为主，单次出门 1-2h';}
+  else if(months<24){stage='学步期';nap='仍需固定午睡 1-2h';tip='喜沙/水/动物，户外每次 2-3h 为宜';}
+  else if(months<36){stage='幼儿期';nap='仍需午睡 1-2h';tip='可安排稍长行程，注意防晒防走失';}
+  else{stage='学龄前';nap='午睡需求减少';tip='可安排半天以上活动，互动性项目更合适';}
+  document.getElementById('ageNote').textContent='当前约 '+ageLabel(months)+'（'+stage+'）：'+nap+'，'+tip+'。';
+  document.getElementById('napTag').textContent=nap;
+  saveAge();
+  refreshFit();   // 年龄变了 → 重算适配度、重排序/重筛选、重生成推荐与攻略内容
+  // 清除当日攻略缓存：年龄变化后重新点「攻略」应按新月龄重新生成
+  try{ const keys=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.indexOf('fz_strategy_')===0) keys.push(k); } keys.forEach(k=>localStorage.removeItem(k)); }catch(e){}
+}
+/* 按宝宝月龄给每个地点算「适龄适配度」(0–100) + 简短理由。
+   6 岁和 1 岁大不同：婴儿喜平静/近/室内/短时，学龄前可接受远途与强互动；据此筛掉不合适、并用于排序。 */
+function ageFit(p,months){
+  const cat=catOf((p.name||'')+(p.sub||''));
+  let base;
+  if(months<12){      // 婴儿期：喜平静、近、室内、短时
+    base={edu:85,aquarium:75,park:55,zoo:60,relax:45,beach:30,kids:35}[cat]??45;
+  }else if(months<24){// 学步期(约1岁+)：喜沙/水/动物，单次2–3h
+    base={kids:85,zoo:85,beach:70,park:80,aquarium:80,edu:65,relax:60}[cat]??65;
+  }else if(months<36){// 幼儿期：可稍长、互动更强
+    base={kids:88,zoo:85,beach:80,park:82,aquarium:82,edu:70,relax:65}[cat]??70;
+  }else{              // 学龄前：半天以上、互动项目最合适
+    base={kids:90,zoo:88,beach:85,park:85,aquarium:85,edu:78,relax:70}[cat]??75;
+  }
+  let score=base;
+  const km=est(p).km;
+  // 距离对低龄扣分更重（远途难配合午睡/情绪）
+  if(months<12){ if(km>20)score-=35; else if(km>12)score-=20; else if(km>8)score-=8; }
+  else if(months<24){ if(km>40)score-=20; else if(km>25)score-=10; }
+  else if(months<36){ if(km>60)score-=15; }
+  else { if(km>70)score-=10; }
+  if(p.indoor==1&&months<12) score+=5;        // 婴儿更友好于室内
+  if(cat==='beach'&&months<12) score-=15;      // 1岁内戏水风险高
+  score=Math.max(0,Math.min(100,Math.round(score)));
+  const label=score>=80?'很适合':score>=60?'适合':score>=40?'一般':score>=20?'不太适合':'不合适';
+  let reason='';
+  if(cat==='beach'&&months<12) reason='1岁内戏水需全程贴身看护，仅浅水脚踩';
+  else if(cat==='kids'&&months<24) reason='设施矮矮安全，每项玩一会儿就换，别贪多';
+  else if(cat==='zoo'&&months<12) reason='动物动静吸引宝宝，但人多嘈杂、控制时长';
+  else if(cat==='edu'&&months<12) reason='安静绘本/展项、室内不晒，短时正好';
+  else if(cat==='aquarium'&&months<12) reason='室内空调、鱼类安静，婴儿友好';
+  else if(km>30&&months<24) reason='路程较远，配合午睡安排';
+  return {score,label,reason};
+}
+/* 依据当前月龄重算所有地点的适配度（年龄变 / 距离变时调用） */
+function recomputeFit(){
+  const months=getAgeMonths();
+  PLACES.forEach(p=>{ const f=ageFit(p,months); p.fit=f.score; p.fitLabel=f.label; p.fitReason=f.reason; });
+}
+/* 年龄/起点变化后：重算适配度并就地刷新适配度列 + 重排序 + 重筛选（不整表重建，避免地图反复缩放） */
+function refreshFit(){
+  recomputeFit();
+  if(!body.children.length) return;
+  PLACES.forEach(p=>{ const tr=body.querySelector(`tr[data-id="${p.id}"]`); if(tr){ const c=tr.querySelector('.fit'); if(c)c.innerHTML=fitCell(p); } });
+  applySort(); apply();
+}
+/* 顶部日期（移到网页最前板块） */
+function updateToday(){
+  const now=new Date(); const wd=['周日','周一','周二','周三','周四','周五','周六'][now.getDay()];
+  document.getElementById('todayDate').textContent='📅 今天 '+now.getFullYear()+'年'+(now.getMonth()+1)+'月'+now.getDate()+'日 · '+wd;
+}
+
+/* ===== 距离/车程估算（用 WGS 坐标，保证一致） ===== */
+function hav(A,B){const R=6371,r=Math.PI/180;const dLat=(B.lat-A.lat)*r,dLng=(B.lng-A.lng)*r;const la1=A.lat*r,la2=B.lat*r;const h=Math.sin(dLat/2)**2+Math.cos(la1)*Math.cos(la2)*Math.sin(dLng/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
+function est(p){const km=hav(start,p);const min=km<10?km*2.5:km*1.6;return{km:Math.round(km*10)/10,min:Math.max(5,Math.round(min))};}
+
+/* ===== 地图（高德瓦片，免密钥） ===== */
+const map=L.map('map',{scrollWheelZoom:false}).setView([26.07,119.35],11);
+L.tileLayer('https://wprd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&style=7&x={x}&y={y}&z={z}',{subdomains:'1234',maxZoom:18,attribution:'© 高德地图'}).addTo(map);
+let startMarker=L.marker(toMap(start.lat,start.lng),{icon:L.divIcon({className:'',html:'<div style="font-size:22px;line-height:1">🚩</div>',iconSize:[24,24],iconAnchor:[12,24]})}).addTo(map).bindPopup('🏠 起点：'+start.name);
+const markers={};
+const markerLayer=L.layerGroup().addTo(map);
+function buildMarkers(){
+  Object.values(markers).forEach(m=>markerLayer.removeLayer(m));
+  for(const k in markers) delete markers[k];
+  PLACES.forEach(p=>{
+    const col=p.isNew?'#f2933c':'#2f8f83';
+    const m=L.circleMarker(toMap(p.lat,p.lng),{radius:7,color:col,fillColor:col,fillOpacity:.9,weight:2}).addTo(markerLayer);
+    m.on('click',()=>focusOnMap(p.id));   // 仅飞地图+弹窗，不跳表格
+    markers[p.id]=m;
+  });
+}
+buildMarkers();
+
+/* ===== 高德导航（URI 方案，免密钥） ===== */
+window.amapNav=function(id){
+  const p=PLACES.find(x=>x.id===id);
+  const s=wgs2gcj(start.lat,start.lng), e=wgs2gcj(p.lat,p.lng);
+  const url='https://uri.amap.com/navigation?from='+s.lng+','+s.lat+','+encodeURIComponent(start.name)+
+    '&to='+e.lng+','+e.lat+','+encodeURIComponent(p.name)+'&mode=car&src=fztrip&coordinate=gaode&policy=1&callnative=1';
+  window.open(url,'_blank');
+};
+
+/* ===== 弹窗内容（含详情 + 查看详情 按钮） ===== */
+function popupHTML(p){
+  const e=est(p);
+  const r=p.rating?('★ '+p.rating+(p.cost?(' / 人均¥'+p.cost):'')):'—（高德未收录评分）';
+  return '<div class="pop"><b>'+p.name+'</b> <span class="popsub">'+p.sub+'</span>'+
+    '<div class="poprow">距起点约 '+e.km+' km · 驾车约 '+e.min+' min</div>'+
+    '<div class="poprow"><b>⭐ 评分：</b>'+r+' <span class="note">（高德聚合，含大众点评/美团等）</span></div>'+
+    '<div class="poprow"><b>玩：</b>'+p.play+'</div>'+
+    '<div class="poprow"><b>卖点：</b>'+p.sell+'</div>'+
+    '<div class="poprow"><b>时间：</b>'+p.time+'</div>'+
+    '<div class="popbtns"><button onclick="showDetail('+p.id+')">📋 查看表格详情</button>'+
+    '<button onclick="openGuide('+p.id+')">📄 简介</button>'+
+    '<button onclick="openStrategy('+p.id+')">📋 攻略</button>'+
+    '<button onclick="amapNav('+p.id+')">🧭 高德导航</button>'+
+    '<button onclick="openReview('+p.id+')">🔗 查评分</button></div></div>';
+}
+
+/* ===== 渲染表格 ===== */
+const body=document.getElementById('placeBody');
+function renderTable(){
+  recomputeFit();        // 渲染前按当前月龄重算适龄适配度
+  body.innerHTML='';
+  PLACES.forEach(p=>{
+    const tr=document.createElement('tr');
+    tr.dataset.id=p.id; tr.dataset.w=p.w; tr.dataset.t=p.t; tr.dataset.indoor=p.indoor; tr.dataset.shade=p.shade; tr.dataset.purpose=p.purpose;
+    tr.innerHTML=`<td class="num">${p.id}</td><td class="place">${p.name}${p.isNew?' <span class="note">🌟新</span>':''}<br><span class="note">${p.sub}</span></td>`+
+      `<td class="dist"></td><td>${p.play}</td><td>${p.sell}</td><td class="food">${p.food}</td><td class="rating">${ratingText(p)}</td><td>${p.time}</td>`+
+      `<td class="fit">${fitCell(p)}</td>`+
+      `<td><button class="navbtn" onclick="event.stopPropagation();amapNav(${p.id})">🧭 导航</button> <button class="navbtn" onclick="event.stopPropagation();openReview(${p.id})">🔗 查评分</button> <button class="navbtn" onclick="event.stopPropagation();openGuide(${p.id})">📄 简介</button> <button class="navbtn" onclick="event.stopPropagation();openStrategy(${p.id})">📋 攻略</button></td>`;
+    tr.addEventListener('click',()=>focusOnMap(p.id));
+    body.appendChild(tr);
+  });
+  updateDistances();
+}
+function updateDistances(){
+  PLACES.forEach(p=>{
+    const e=est(p); const tr=body.querySelector(`tr[data-id="${p.id}"]`);
+    tr.dataset.km=e.km; tr.dataset.d=e.min<=10?'walk':e.min<=20?'near':'far';
+    tr.querySelector('.dist').innerHTML=`约 ${e.km} km<br><span class="note">驾车约 ${e.min} min</span>`;
+    markers[p.id].bindPopup(popupHTML(p));
+  });
+  const all=PLACES.map(p=>toMap(p.lat,p.lng)); all.push(toMap(start.lat,start.lng));
+  map.fitBounds(all,{padding:[40,40]});
+  applySort();
+}
+/* 仅在地图上飞 + 弹窗（不滚动表格） */
+function focusOnMap(id){
+  const p=PLACES.find(x=>x.id===id); const g=toMap(p.lat,p.lng);
+  map.flyTo(g,id>=10?12:14,{duration:.8});
+  setTimeout(()=>markers[id].openPopup(),300);
+}
+/* 用户主动点「查看表格详情」才滚到表格并高亮 */
+function showDetail(id){
+  const tr=body.querySelector(`tr[data-id="${id}"]`);
+  if(tr){tr.scrollIntoView({behavior:'smooth',block:'center'});
+    tr.classList.add('detail'); setTimeout(()=>tr.classList.remove('detail'),2200);}
+  map.flyTo(toMap(PLACES.find(x=>x.id===id).lat,PLACES.find(x=>x.id===id).lng),id>=10?12:14,{duration:.8});
+  setTimeout(()=>markers[id].openPopup(),200);
+}
+
+/* ===== 排序（默认按🍼适龄适配度，亦可按距离） ===== */
+function applySort(){
+  const arr=PLACES.map(p=>({id:p.id,min:est(p).min,fit:(p.fit==null?0:p.fit),rating:p.rating||0}));
+  if(sortMode==='asc') arr.sort((x,y)=>x.min-y.min);
+  else if(sortMode==='desc') arr.sort((x,y)=>y.min-x.min);
+  else arr.sort((x,y)=> (y.fit-x.fit) || (y.rating-x.rating) || (x.min-y.min));   // 默认按适龄适配度
+  arr.forEach(o=>body.appendChild(body.querySelector(`tr[data-id="${o.id}"]`)));
+  document.getElementById('sortInd').textContent=sortMode==='asc'?'▲':sortMode==='desc'?'▼':'';
+  document.getElementById('fitInd').textContent=sortMode==='asc'||sortMode==='desc'?'':(sortMode==='fit'?'▼':'▼');
+}
+document.getElementById('sortTh').addEventListener('click',()=>{
+  sortMode=sortMode==='none'?'asc':sortMode==='asc'?'desc':'none';
+  applySort(); saveState();
+});
+/* 🍼适配 表头：点击按适龄适配度降序排序（再点回到「无排序」即默认适配度） */
+document.getElementById('fitTh').addEventListener('click',()=>{
+  sortMode=sortMode==='fit'?'none':'fit';
+  applySort(); saveState();
+});
+
+/* ===== 筛选 ===== */
+function apply(){
+  let count=0,firstMatch='';
+  PLACES.forEach(p=>{
+    const tr=body.querySelector(`tr[data-id="${p.id}"]`);
+    const w=p.w.split(' '),t=p.t.split(' '),pr=p.purpose.split(' '),d=tr.dataset.d,indoor=p.indoor==1;
+    let ok=true;
+    const km=Number(tr.dataset.km);
+    if(km<minKm||km>maxKm) ok=false;   // 搜索距离区间作为清单硬窗口：窗口外的地点（含兜底种子）不显示
+    if(sel.weather&&!w.includes(sel.weather))ok=false;
+    if(sel.time&&!t.includes(sel.time))ok=false;
+    if(sel.purpose&&!pr.includes(sel.purpose))ok=false;
+    if(sel.distance==='walk'&&d!=='walk')ok=false;
+    if(sel.distance==='near'&&d==='far')ok=false;
+    if(sel.baby==='normal'&&d==='far'&&!indoor)ok=false;
+    if(sel.baby==='nap'&&d==='far'&&!indoor)ok=false;
+    if(sel.onlyFit==='1'&&(p.fit==null||p.fit<40))ok=false;   // 仅看适龄：过滤掉明显不适合当前月龄的地点（适配度<40）
+    tr.style.display=ok?'':'none'; tr.classList.toggle('match',ok);
+    if(ok){count++; if(!firstMatch)firstMatch=p.name;}
+  });
+  const box=document.getElementById('result');
+  const active=Object.entries(sel).filter(([k,v])=>v);
+  if(active.length===0){box.classList.remove('show');}
+  else{
+    const cond=active.map(([k,v])=>labels[k][v]).join(' + ');
+    let tip;
+    if(count===0){tip='当前组合下没有特别合适的地点。建议：<b>下雨/闷热</b>优先选带「室内」标签的地点；<b>快到午睡</b>就就近公园或回家睡；或放宽"距离意愿/搜索距离区间"试试。';}
+    else{const far=PLACES.filter(p=>{const tr=body.querySelector(`tr[data-id="${p.id}"]`);return tr.style.display!=='none'&&tr.dataset.d==='far';}).length;tip=`根据 <b>${cond}</b>，共匹配 <b>${count}</b> 个地点（已高亮）。${far>0?'其中含周边远途 '+far+' 个；':''}首选推荐：<b>${firstMatch}</b>。`;}
+    box.innerHTML='🔎 '+tip; box.classList.add('show');
+  }
+  renderHot();
+  renderQuick();
+}
+/* 第四点：按天气/状态快速决策 —— 基于「当前推荐清单」动态生成（不再写死） */
+function renderQuick(){
+  const tb=document.getElementById('quickBody'); if(!tb)return;
+  const rows=[
+    ['晴天微风 · 想近', p=>p.indoor!==1&&p.shade===1&&est(p).km<=15],
+    ['大太阳 / 闷热', p=>p.indoor===1||p.shade===1],
+    ['下雨', p=>p.indoor===1],
+    ['想放电跑跳', p=>p.purpose.split(' ').includes('energy')],
+    ['认知启蒙', p=>p.purpose.split(' ').includes('cognitive')],
+    ['状态好 · 想远点', p=>est(p).km>=30],
+    ['只想遛个弯', p=>p.purpose.split(' ').includes('walk')&&est(p).km<=15],
+  ];
+  tb.innerHTML=rows.map(([label,fn])=>{
+    const hit=PLACES.filter(fn).sort((a,b)=>(b.fit||0)-(a.fit||0) || (b.rating||0)-(a.rating||0)).slice(0,4).map(p=>p.name);
+    return '<tr><td>'+label+'</td><td>'+(hit.length?hit.join('、'):'<span class="note">（当前清单暂无，放宽距离/检索）</span>')+'</td></tr>';
+  }).join('');
+}
+
+/* ===== 每日热门（每日 8:00 刷新） ===== */
+let hotDay='';
+function hotSeed(){const n=new Date();return n.getFullYear()+'-'+(n.getMonth()+1)+'-'+n.getDate();}
+function renderHot(){
+  const now=new Date(); const dow=now.getDay(); const weekend=(dow===0||dow===6);
+  // 以"天"为种子做轮换：每天只变一次（用当天日期做偏移，保证每日稳定但不写死 ID）
+  if(hotDay!==hotSeed()){hotDay=hotSeed();}
+  // 动态从「当前推荐清单」挑 3 个：雨天/闷热优先室内，否则优先近郊高分
+  let cand=PLACES.slice();
+  if(sel.weather==='rain'||sel.weather==='hot') cand=cand.filter(p=>p.indoor===1);
+  cand.sort((a,b)=>(b.fit||0)-(a.fit||0) || (b.rating||0)-(a.rating||0) || (est(a).km-est(b).km));
+  const seed=now.getDate()%Math.max(1,cand.length);
+  const pick=cand.slice(seed,seed+3); if(pick.length<3) pick.push(...cand.slice(0,3-pick.length));
+  const why=(p)=>{ if(sel.weather==='rain')return'今天下雨，室内最稳'; if(sel.weather==='hot')return'今天闷热，空调房优先'; if(weekend)return'周末近郊放风正合适'; return'工作日人少更清净'; };
+  const grid=document.getElementById('hotGrid'); grid.innerHTML='';
+  pick.slice(0,3).forEach((p,i)=>{
+    const e=est(p);
+    const c=document.createElement('div'); c.className='hotcard';
+    c.innerHTML=`<span class="rank">🔥 热门 ${i+1}</span><h4>${p.name}</h4><div class="why">${why(p)}</div><div class="meta">${p.sub} · 距起点约 ${e.km} km / 驾车约 ${e.min} min${p.rating?' · ⭐'+p.rating:''}</div>`;
+    c.addEventListener('click',()=>focusOnMap(p.id));
+    grid.appendChild(c);
+  });
+}
+/* ===== 实时数据源：高德「周边搜索」Web 服务（JSONP，浏览器直连，免安全密钥） ===== */
+let lastAmapErr='';
+function setDS(t){const el=document.getElementById('dsStatus'); if(el)el.textContent=t;}
+/* JSONP 请求（绕开 CORS，file:// 也能用） */
+function amapJSONP(url){
+  return new Promise((resolve,reject)=>{
+    const cb='_amapcb_'+Math.random().toString(36).slice(2);
+    const s=document.createElement('script');
+    const clean=()=>{try{document.body.removeChild(s);}catch(e){} try{delete window[cb];}catch(e){}};
+    window[cb]=function(d){clean(); resolve(d);};
+    s.onerror=()=>{clean(); reject(new Error('网络/脚本加载失败'));};
+    s.src=url+(url.indexOf('?')>=0?'&':'?')+'callback='+cb;
+    document.body.appendChild(s);
+  });
+}
+/* 高德「关键词文本搜索」：按相关度返回、市内全量、不按距离截断
+   → 远郊（如永泰·哇呜动物乐园）也能被搜到，这正是之前 place/around 漏掉它的根因 */
+function amapText(kw){
+  const key=getAmapKey();
+  const url='https://restapi.amap.com/v3/place/text?key='+encodeURIComponent(key)+
+    '&keywords='+encodeURIComponent(kw)+'&city=福州&citylimit=true&offset=25&page=1&extensions=all';
+  return amapJSONP(url).then(d=>{
+    if(d&&d.status==='1'&&Array.isArray(d.pois)) return d.pois;
+    throw new Error((d&&(d.info||('status '+d.status)))||'empty');
+  }).catch(e=>{ lastAmapErr=String(e.message||e); return []; });
+}
+/* ===== POI 准入：只保留真正的"带娃目的地"，过滤掉宠物/医院/店铺等 ===== */
+const MIN_RATING=4.0;   // 普通公园/广场需评分≥此值才算"推荐"，避免海量平庸 POI 刷屏
+/* 硬性排除（非带娃目的地：宠物/医疗/购物/住宿/住宅/交通/金融…） */
+const BLOCK_RE=/宠物|兽医|动物医院|卫生院|诊所|药店|药房|医院|门诊|超市|便利店|商场|购物中心|酒店|民宿|餐饮|饭店|餐厅|美食|咖啡|茶饮|住宅|小区|公寓|商铺|写字楼|公司|工厂|学校|幼儿园|培训|辅导|停车场|加油|加气|充电|银行|营业厅|维修|理发|美容/;
+/* 正向白名单（带娃目的地 POI 类型） */
+const ALLOW_RE=/公园|动物园|水族|海洋|儿童|亲子|游乐|主题公园|植物园|森林公园|湿地|海滨|沙滩|海滩|广场|图书馆|少儿|科技|科普|温泉|景点|风景区|露营|农场|采摘|萌宠/;
+/* 明确的目的地类型：即便评分略低也直接收（unambiguously a kid destination） */
+const UNMISTAKABLE=/动物园|海洋|水族|儿童公园|儿童乐园|游乐场|游乐园|主题公园|植物园|森林公园|湿地|沙滩|海滨|科普|科技馆|图书馆|萌宠|水世界/;
+/* ===== 子设施识别：动物园/场馆内「某动物馆/区」属子设施，不是独立目的地（如华南虎馆、河马馆） ===== */
+const EXHIBIT_HALL=/(虎|狮|熊|熊猫|猫|狼|豹|大象|河马|长颈鹿|猴|鹿|马|牛|羊|鸟|鸡|鸭|鹅|鱼|两栖|爬行|猛禽|食草|食肉|灵长|猩猩|企鹅|海豹|海豚|水母|鲨鱼|鳄鱼|龟|蛇|昆虫|松鼠|兔子|孔雀|天鹅|恐龙|禽|兽).*(馆|区|苑|园|舍|笼|棚|池|展区|展示|馆区)$/;
+/* 大场所-子设施后缀（如 烟台山公园-观景台、XX-北门）；命中则折叠回大场所名 */
+const SUB_FEATURE=/(观景台|观景平台|瞭望台|观景塔|北门|南门|东门|西门|正门|大门|入口|出口|出入口|停车场|停车区|游客中心|游客服务中心|售票处|售票厅|服务中心|服务区|服务站|咨询台|卫生间|洗手间|公厕|驿站|美食广场|美食街|商铺|店铺|一期|二期|三期|东区|西区|南区|北区|中区|儿童乐园|游乐区|萌宠园|科普区|表演场|观景区|游览区|体验区|亲子区|戏水区|沙池)$/;
+/* 是否「子设施 / 景点内小点」：应并入所属大场所，不应单独进入推荐清单 */
+function isSubPOI(p){
+  const c=cleanName(p.name||'');
+  if(EXHIBIT_HALL.test(c)) return true;                              // 某动物展厅（华南虎馆/河马馆/狼馆…）
+  if(/^(猛兽|食草|食肉|飞禽|游禽|涉禽|两栖|爬行|水生|海洋|灵长|珍禽|鹦鹉|鳄鱼|河马|大象|长颈鹿|熊猫|虎|狮|熊|猴|狼|豹|鹿|鸟|鱼|禽|兽|动物园|动物).*(区|馆|苑|园|舍|笼|棚|池|展区|展示|馆区)$/.test(c)) return true;
+  if(/[－\-—].*(馆|区|苑|园|舍|笼|棚|池|展区|展示|馆区)$/.test(c)) return true;  // 「父场所-子馆/子区」形态
+  // 短名(≤3字动物)+馆/区/舍/笼/棚/池/展区后缀，且非明确大目的地（海洋馆/水族馆等已被 UNMISTAKABLE 救回）→ 视为子设施
+  if(/^[一-龥]{1,3}(馆|区|舍|笼|棚|池|展区|展示|馆区)$/.test(c) && !UNMISTAKABLE.test(c)) return true;
+  return false;
+}
+function isGoodPOI(p){
+  const s=(p.type||'')+'|'+(p.name||'');
+  if(BLOCK_RE.test(s)) return false;          // 先剔除宠物/医院/店铺等
+  return ALLOW_RE.test(p.type||'');           // 再要求类型在白名单内
+}
+function addEligible(p){
+  if(!isGoodPOI(p)) return false;
+  const combo=(p.type||'')+(p.name||'');
+  if(UNMISTAKABLE.test(combo)) return true;    // 明确目的地，直接收
+  const r=Number((p.biz_ext&&p.biz_ext.rating)||0);
+  return r>=MIN_RATING;                         // 普通公园/广场需评分达标才算推荐
+}
+/* 归一化名称：去英文前缀/括号/地名前缀/子点后缀/首尾连字符，用于"同一大场所"判定 */
+function normCore(n){
+  if(!n) return '';
+  let s=String(n).replace(/[（(][^()（）]*[)）]/g,'').replace(/^[A-Za-z0-9+&.\-_\s]+/,'').trim();
+  s=s.replace(/^(福州市|福建省|福州[·\-—]?|中国)/,'').trim();   // 剥「福州市/福建省/福州·/中国」等前缀，使「福州市儿童公园」并入「儿童公园」
+  s=s.replace(/^(.+?)[－\-—](观景台|观景平台|瞭望台|观景塔|北门|南门|东门|西门|正门|大门|入口|出口|出入口|停车场|停车区|游客中心|游客服务中心|售票处|售票厅|服务中心|服务区|服务站|咨询台|卫生间|洗手间|公厕|驿站|美食广场|美食街|商铺|店铺|一期|二期|三期|东区|西区|南区|北区|中区|儿童乐园|游乐区|萌宠园|科普区|表演场|观景区|游览区|体验区|亲子区|戏水区|沙池)$/,'$1').trim();
+  s=s.replace(/(北|南|东|西|正|主|侧|总)?(门|出入口|入口|出口|大门|停车场|停车区|停车点|游客中心|游客服务中心|售票处|售票厅|服务中心|服务区|服务站|咨询台|卫生间|洗手间|公厕|驿站|公交站|公交枢纽|地铁站|站点|候车亭|餐厅?|饭店|美食广场|美食街|商铺|店铺|一期|二期|三期|东区|西区|南区|北区|中区|\d+号|\d+区|\d+栋|\d+幢)/g,'').trim();
+  return s.replace(/^[-－_—\s]+|[-－_—\s]+$/g,'').trim();
+}
+/* 两个名称是否指向同一大场所（互含即可，如"福州沙滩公园"⊃"沙滩公园"） */
+function samePlace(a,b){ const x=normCore(a), y=normCore(b); if(!x||!y) return false; return x===y || x.indexOf(y)>=0 || y.indexOf(x)>=0; }
+/* 同一核心名的一组 POI 里挑"最佳代表"（优先有评分，其次有地址） */
+function pickBest(g){ return g.slice().sort((a,b)=>(Number((b.biz_ext&&b.biz_ext.rating)||0))-(Number((a.biz_ext&&a.biz_ext.rating)||0)) || ((b.address?1:0)-(a.address?1:0)))[0]; }
+/* 展示用清洗名：去掉英文品牌前缀（如 Wow+Park+）、括号后缀；并折叠「大场所-子设施」回大场所 */
+function cleanName(n){
+  if(!n) return '';
+  let s=String(n).replace(/[（(][^()（）]*[)）]/g,'').replace(/^[A-Za-z0-9+&.\-_\s]+/,'').trim();
+  s=s.replace(/^(.+?)[－\-—](观景台|观景平台|瞭望台|观景塔|北门|南门|东门|西门|正门|大门|入口|出口|出入口|停车场|停车区|游客中心|游客服务中心|售票处|售票厅|服务中心|服务区|服务站|咨询台|卫生间|洗手间|公厕|驿站|美食广场|美食街|商铺|店铺|一期|二期|三期|东区|西区|南区|北区|中区|儿童乐园|游乐区|萌宠园|科普区|表演场|观景区|游览区|体验区|亲子区|戏水区|沙池)$/,'$1').trim();
+  return s;
+}
+/* 评分/人均 展示文本 */
+function ratingText(p){
+  if(p&&p.rating) return '★ '+p.rating+(p.cost?('<br><span class="note">人均 ¥'+p.cost+'</span>'):'');
+  return '<span class="note">待核实</span>';
+}
+/* 适龄适配度 展示（按分数着色） */
+function fitCell(p){
+  const s=(p.fit==null?0:p.fit), lab=p.fitLabel||'—';
+  const cls=s>=80?'fit-great':s>=60?'fit-ok':s>=40?'fit-mid':s>=20?'fit-low':'fit-no';
+  return '<b class="'+cls+'">'+s+'</b> <span class="note">'+lab+'</span>';
+}
+/* 查评分：跳转高德（聚合大众点评/美团等评分与用户评价） */
+window.openReview=function(id){const p=PLACES.find(x=>x.id===id); window.open('https://www.amap.com/search?query='+encodeURIComponent(p.name),'_blank');};
+/* 跳转大众点评搜索该地点（看原始点评，需登录） */
+window.openDianping=function(id){const p=PLACES.find(x=>x.id===id); window.open('https://www.dianping.com/search?keyword='+encodeURIComponent(p.name),'_blank');};
+/* 当场（纯前端）生成某地点的带娃详细攻略 */
+/* 攻略：针对该地点的现场详细攻略（点击时即时生成，不预置统一模板）；可在软件内补充「现场任务/备注」并保存，逐步形成属于这个地点的攻略 */
+function howToPlay(item,cat,months){
+  if(/沙|海|踏浪|戏水|看海|浅水|水世界/.test(item)) return '带挖沙玩具+遮阳棚，河岸/海边多无护栏务必盯紧宝宝；仅玩脚踝深浅水，玩后冲洗。';
+  if(/动物|萌宠|喂|看鱼|长颈鹿|大象|小熊猫|鸽/.test(item)) return '动物上午更活跃，先去动物区；投喂按园区规定，人多用防走失绳。';
+  if(/海洋|展缸|表演|人鱼|水族/.test(item)) return '先查表演场次、提前10分钟占座；展缸较暗，抱稳宝宝防受惊。';
+  if(/滑梯|戏水区|小火车|旋转木马|游乐|放电|跑跳|攀爬/.test(item)) return (months<24?'设施矮矮安全，每项玩一会儿就换，别贪多；':'设施安全，鼓励自己爬跑；')+'脱鞋区注意防滑。';
+  if(/绘本|阅读|互动|科普|科技|展厅|博物|美术/.test(item)) return '保持安静，选低龄互动展项；室内空调凉带薄外套。';
+  if(/步道|散步|江边|草坪|花海|古厝|街区|栈道|云海|民宿|广场|公园|湿地|植物/.test(item)) return '推车友好段优先，树荫/江风段歇脚；拍照顺带放电。';
+  if(/船|脚踏|喂鱼|看鸽/.test(item)) return '近距离观察，备小零食奖励配合；上下船抱稳。';
+  if(/温泉/.test(item)) return '只泡浅水区，注意水温与防滑；'+(months<24?'1岁偏小仅戏浅水。':'')+'';
+  return '结合宝宝状态灵活安排，注意防晒与补水。';
+}
+function loadGuideNotes(id){ try{return localStorage.getItem('fz_notes_'+id)||'';}catch(e){return '';} }
+window.saveGuideNotes=function(id){
+  const ta=document.getElementById('guideNotes'); if(!ta)return;
+  try{localStorage.setItem('fz_notes_'+id,ta.value);}catch(e){}
+  const tip=document.getElementById('guideNoteTip'); if(tip)tip.textContent='已保存（本机）✓';
+};
+/* 注意事项（简介/攻略共用，按月龄与天气生成） */
+function buildWarn(p,months){
+  let warn='';
+  if(p.w.includes('hot')) warn+='• 闷热大太阳：避开正午，多补水、勤休息\n';
+  if(p.w.includes('rain')) warn+='• 下雨：室内部分照常，户外带雨具\n';
+  if(p.indoor!=1) warn+='• 户外少遮阴凉爽时段去，备遮阳\n';
+  warn+='• 单次出门控制在 '+(months<24?'2-3h':(months<36?'半天':'半天以上'))+'，配合午睡\n';
+  warn+='• 出发前确认开放时间与票价（点「查评分」看最新点评）';
+  return warn;
+}
+window.openGuide=function(id){
+  const p=PLACES.find(x=>x.id===id); if(!p)return;
+  const e=est(p), months=getAgeMonths(), age=ageLabel(months);
+  const r=p.rating?('★ '+p.rating+(p.cost?(' / 人均¥'+p.cost):'')):'高德未收录评分（点「查评分」看真实点评）';
+  const cat=catOf((p.name||'')+(p.sub||''));
+  const items=(p.play||'').split('、').filter(Boolean);
+  const playList=items.length?items.map(it=>'<li><b>'+it+'</b>：'+howToPlay(it,cat,months)+'</li>').join(''):'<li>到点后结合现场灵活安排</li>';
+  // 适龄 & 区域建议：说明这个月龄合不合适、以及园区里哪块更适合孩子（子设施不单列，适龄提示放这里）
+  const fitTxt='适龄适配度 <b class="fit-'+(p.fit>=80?'great':p.fit>=60?'ok':p.fit>=40?'mid':p.fit>=20?'low':'no')+'">'+(p.fit==null?0:p.fit)+'</b> '+(p.fitLabel||'')+(p.fitReason?('：'+p.fitReason):'');
+  const areaTxt=CAT_TIP[cat]||'结合宝宝状态灵活安排，注意防晒与补水。';
+  const warn=buildWarn(p,months);
+  const notes=loadGuideNotes(p.id).replace(/</g,'&lt;');
+  const html=
+    '<div class="guide-h">📄 '+p.name+' · 带娃现场简介</div>'+
+    '<div class="guide-sub">'+p.sub+' ｜ 距'+start.name+'约 '+e.km+' km · 驾车约 '+e.min+' min ｜ 宝宝 '+age+'</div>'+
+    '<div class="guide-sec"><b>⭐ 评分</b> '+r+'</div>'+
+    '<div class="guide-sec"><b>✨ 卖点</b> '+p.sell+'</div>'+
+    '<div class="guide-sec"><b>🎯 可玩项目 & 怎么玩</b><ul class="guide-list">'+playList+'</ul></div>'+
+    '<div class="guide-sec"><b>👶 适龄 & 区域建议</b><div class="guide-text">'+fitTxt+'<br><br>'+areaTxt+'</div></div>'+
+    '<div class="guide-sec"><b>🍽️ 吃饭 / 野餐</b> '+p.food+'</div>'+
+    '<div class="guide-sec"><b>⚠️ 注意事项</b><div class="guide-text">'+warn+'</div></div>'+
+    '<div class="guide-sec"><b>📝 现场任务 / 备注</b><div class="guide-text" style="background:#fff;border:1px solid var(--border)"><textarea id="guideNotes" style="width:100%;min-height:70px;border:none;outline:none;font:inherit;resize:vertical" placeholder="在现场随时补充：要玩的、要带的、要注意的…（自动存本机，形成属于这个地点的攻略）">'+notes+'</textarea></div><div class="guide-note-row"><span id="guideNoteTip" class="note"></span><button class="navbtn" onclick="saveGuideNotes('+p.id+')">💾 保存备注</button></div></div>'+
+    '<div class="guide-btns"><button class="navbtn" onclick="amapNav('+p.id+')">🧭 高德导航</button>'+
+    '<button class="navbtn" onclick="openReview('+p.id+')">🔗 查评分</button>'+
+    '<button class="navbtn" onclick="openStrategy('+p.id+')">📋 看详细攻略</button>'+
+    '<button class="navbtn" onclick="closeGuide()">关闭</button></div>';
+  document.getElementById('guideBody').innerHTML=html;
+  document.getElementById('guideModal').classList.add('show');
+};
+window.closeGuide=function(){document.getElementById('guideModal').classList.remove('show');};
+document.getElementById('guideModal').addEventListener('click',e=>{if(e.target.id==='guideModal')closeGuide();});
+/* 按 POI 类型归类，给出"有实质内容"的游玩/卖点/吃饭建议（不再用占位空话） */
+const CAT_RULES=[ // [正则, 类别]
+  [/海洋|水族/, 'aquarium'],
+  [/动物园|动物乐园|萌宠/, 'zoo'],
+  [/儿童|亲子|游乐|游乐园|主题公园|水世界|淘气堡|玩耍/, 'kids'],
+  [/沙滩|海滨|海滩|海[边岸]/, 'beach'],
+  [/图书馆|少儿|科技馆|科普|少年|幼儿|博物馆|美术馆|天文/, 'edu'],
+  [/公园|湿地|广场|绿道|植物|花园|风景|景点|文化|风景区|森林公园|山庄|农庄|生态/, 'park'],
+];
+const CAT={
+  aquarium:{play:'看海洋动物、人鱼表演、互动展缸、触摸池',
+    food:'馆内/周边商圈餐饮齐全，吃饭方便；馆内餐饮偏贵可自带少量零食',
+    sell:'室内空调不晒，夏天/雨天带娃救星；表演有固定场次，注意时间安排'},
+  zoo:{play:'看动物、萌宠互动、喂小动物',
+    food:'园区内通常有亲子餐厅/小吃；门口商圈也有快餐',
+    sell:'认知启蒙神器，动物动静最抓宝宝注意力；配好午睡再逛'},
+  kids:{play:'儿童游乐设施、滑梯沙池、放电跑跳',
+    food:'多在商场/室内，吃饭非常方便',
+    sell:'专为儿童设计，设施矮矮安全、分龄游乐'},
+  beach:{play:'沙滩玩沙、戏水踏浪、看海捡贝壳',
+    food:'海边大排档/渔家乐多；自带零食饮水，注意防晒与冲洗',
+    sell:'真正看海玩沙最开心；路程较远建议安排半天到一整天'},
+  edu:{play:'绘本阅读、互动展项、动手体验',
+    food:'周边商圈餐饮齐全（多配母婴室/儿童餐）',
+    sell:'室内空调免费/低价，雨天闷热救星、培养专注；需保持安静'},
+  park:{play:'大草坪奔跑、林荫步道、沙坑/儿童区、放风筝、野餐',
+    food:'园内多无餐厅，建议自带野餐垫+简餐在草坪野餐；或就近找连锁快餐/商场',
+    sell:'城市绿肺、树荫多推车友好，天然放电场；正午少遮阴凉爽时段去'},
+  relax:{play:'散步、游玩、亲子放松',
+    food:'就近商圈/餐饮解决',
+    sell:'亲子休闲好去处，出发前确认是否适合低龄宝宝'},
+};
+/* 各类目的地「哪块区域更适合这个月龄宝宝」——子设施(如动物园里的某馆)不单列，其适龄提示在此体现 */
+const CAT_TIP={
+  zoo:'优先走平缓环路，去食草动物区、萌宠互动区等动物近、好观察的区域；猛兽区噪音大、婴儿控制停留；带推车少走台阶。',
+  aquarium:'先看人鱼/海豚表演（固定场次，提前占座），再逛互动展缸；展缸偏暗，抱稳防受惊；室内空调凉带薄外套。',
+  beach:'只在浅水脚踩、岸边玩沙；河海岸多无护栏务必盯紧；带遮阳棚与换洗衣物，婴儿仅浅水。',
+  kids:'从矮矮的滑梯、沙池开始，每项玩一会儿就换别贪多；脱鞋区注意防滑；1岁内以感官体验为主。',
+  edu:'选低龄互动展项与绘本区，保持安静；室内空调带薄外套；短时停留正合适。',
+  park:'走林荫/草坪平缓段，沙坑与儿童区是放电首选；正午躲树荫、带野餐垫。',
+  relax:'就近轻松溜达，结合宝宝状态灵活安排，别勉强。'
+};
+function catOf(combo){ for(const r of CAT_RULES){ if(r[0].test(combo)) return r[1]; } return 'relax'; }
+/* ===== 详细「攻略」：点击时当场生成（按类别拆解具体游玩场景），当日缓存、不重复生成 =====
+   注：招牌动物/表演场次为同类目的地「常见安排」，具体以园区当日公告为准；详见各场景 tip。 */
+const STRAT={
+  zoo:{
+    intro:'动物园是 1–3 岁宝宝的认知启蒙神器——动物的声音、颜色、动作最能抓住低龄宝宝的注意力。下面按「游玩场景」拆解，当日可按宝宝状态取舍。',
+    scenes:[
+      {name:'招牌动物展区',age:'很适合',detail:'常见招牌：大熊猫、金丝猴、长颈鹿、大象、河马、犀牛、袋鼠、斑马、老虎、狮子、黑熊、环尾狐猴、羊驼、鹦鹉等。低龄宝宝优先看体型大、动作多、颜色鲜明的（大象、长颈鹿、猴子、鹦鹉），停留短、印象深。',tip:'动物上午更活跃、喂食时段最精神；先逛动物区，避开猛兽区噪音，婴儿控制停留。'},
+      {name:'动物表演 / 剧场',age:'很适合',detail:'常见场次约 10:30、14:30（海狮 / 大象 / 鸟类 / 巡游，具体以园区当日公告为准），通常 20–30 分钟，是宝宝最兴奋的环节。',tip:'提前 10 分钟到占前排中间；人多抱稳防走失；结束后趁兴趣去附近展区二刷。'},
+      {name:'萌宠互动 / 儿童牧场',age:'适合',detail:'可近距离喂羊驼、兔子、小香猪，部分可抚摸，是亲子互动高分场景。',tip:'按园区规定投喂专用食物；备湿巾擦手；1 岁内以看为主、少接触。'},
+      {name:'儿童游乐区 / 浅游乐',age:'适合',detail:'滑梯、小沙池、旋转小设备，逛累可放电。',tip:'每项玩一会儿就换别贪多；脱鞋区注意防滑。'},
+      {name:'观光小火车 / 电瓶车',age:'一般',detail:'园区大时乘小火车代步，宝宝当"兜风"也开心。',tip:'抱稳坐好；避开正午暴晒的敞篷段。'},
+      {name:'餐饮 / 休息区',age:'—',detail:'园区内亲子餐厅、小吃摊；门口商圈也有快餐。',tip:'错峰用餐，带少量自备零食防饿。'}
+    ],
+    half:'09:00 出发 → 10:00 先逛招牌动物（趁精神好）\n10:30 动物表演（提前占座）\n12:00 午餐\n14:00 萌宠互动区\n15:30 儿童游乐区放电\n16:30 返程（配合午睡）',
+    full:'同上，下午加乘小火车游园 + 二刷喜欢的动物，17:30 返程。'
+  },
+  aquarium:{
+    intro:'海洋馆 / 水族馆是夏天、雨天的带娃救星：室内空调不晒，动物动静大、色彩梦幻，最抓宝宝眼球。',
+    scenes:[
+      {name:'海豚 / 人鱼表演',age:'很适合',detail:'招牌大秀，常见场次约 11:00、15:00（以当日公告为准），约 20–30 分钟。',tip:'提前 10–15 分钟占座，前排可能被溅水；表演结束趁兴逛展缸。'},
+      {name:'主题展缸 / 海底隧道',age:'很适合',detail:'鲨鱼、海龟、水母、珊瑚等分区展示，海底隧道像"被鱼包围"，视觉冲击强。',tip:'展缸偏暗、抱稳防受惊；隧道人多抱好宝宝。'},
+      {name:'触摸池 / 互动区',age:'一般',detail:'可摸海星、海参等温顺海洋生物，感官体验好。',tip:'按指引触摸、摸后洗手；1 岁内以看为主。'},
+      {name:'科普 / 儿童区',age:'一般',detail:'互动屏幕、模型、绘本，雨天也能玩。',tip:'选低龄互动项；室内空调凉带薄外套。'},
+      {name:'餐饮 / 休息',age:'—',detail:'馆内餐饮偏贵，可自带少量零食；周边商圈齐全。',tip:'错峰休息，自带饮水。'}
+    ],
+    half:'09:30 出发 → 10:30 先看展缸热身\n11:00 海豚表演（占座）\n12:30 午餐\n14:00 触摸池 + 科普区\n15:30 海底隧道二刷\n16:30 返程',
+    full:'同上，加逛全部主题展缸与儿童乐园，17:00 返程。'
+  },
+  beach:{
+    intro:'沙滩 / 海滨是真正"看海玩沙"的快乐地，但路程较远、日晒强，建议半天到一整天，带齐装备。',
+    scenes:[
+      {name:'沙滩玩沙区',age:'很适合',detail:'浅滩沙细，挖沙、堆城堡、捡贝壳，低龄宝宝最爱。',tip:'带挖沙玩具 + 遮阳棚；只玩脚踝深浅水，河海岸多无护栏务必盯紧。'},
+      {name:'戏水 / 踏浪区',age:'一般',detail:'浅水区踩浪、看浪花，夏季最开心。',tip:'1 岁内仅脚踩、不呛水；备换洗衣物与浴巾。'},
+      {name:'看海步道 / 堤坝',age:'很适合',detail:'沿海步道散步、吹海风、远眺，推车友好。',tip:'避开正午暴晒，戴遮阳帽。'},
+      {name:'冲洗 / 更衣',age:'—',detail:'沙滩通常有冲淡水和更衣处。',tip:'玩后尽快冲洗，防沙硌脚、防晒。'},
+      {name:'餐饮 / 渔家乐',age:'—',detail:'海边大排档、渔家乐多。',tip:'选干净店家；自带零食饮水。'}
+    ],
+    half:'09:00 出发（避正午）\n10:30 到沙滩玩沙 + 浅水踩浪\n12:00 渔家乐午餐\n14:00 步道散步看海\n15:30 冲洗更衣\n16:00 返程',
+    full:'同上，下午加赶海 / 看日落，18:00 返程（或住一晚）。'
+  },
+  kids:{
+    intro:'儿童乐园 / 游乐场专为儿童设计，设施矮矮安全、分龄游乐，是"放电"首选。',
+    scenes:[
+      {name:'分龄游乐区',age:'很适合',detail:'滑梯、小攀爬、摇马、秋千等，矮矮安全。',tip:'按身高分区；每项玩一会儿就换别贪多。'},
+      {name:'沙池 / 软垫区',age:'很适合',detail:'玩沙、爬爬垫，感官与大动作锻炼。',tip:'脱鞋区注意防滑；自带小铲子。'},
+      {name:'角色扮演 / 互动区',age:'一般',detail:'小超市、厨房、积木，亲子共玩。',tip:'1 岁内以感官体验为主。'},
+      {name:'家长休息区',age:'—',detail:'座椅、母婴位，方便看护与补给。',tip:'就近坐，视线不离开宝宝。'}
+    ],
+    half:'09:30 出发 → 10:00 分龄区放电\n11:00 沙池 / 软垫\n12:00 园内午餐\n14:00 角色扮演\n15:30 休息返程',
+    full:'同上，加二刷喜欢的项目 + 家长休息，17:00 返程。'
+  },
+  edu:{
+    intro:'图书馆 / 科技馆 / 博物馆室内空调、免费或低价，是雨天、闷热的救星，也能培养专注。',
+    scenes:[
+      {name:'绘本 / 阅读区',age:'很适合',detail:'低龄绘本、亲子共读，安静又温馨。',tip:'选布书 / 硬板书，防撕咬；保持安静。'},
+      {name:'互动展项 / 科普',age:'一般',detail:'可动手的模型、屏幕、实验，边玩边学。',tip:'选低龄互动项；短停留正合适。'},
+      {name:'手工 / 体验活动',age:'一般',detail:'定时手工、讲解活动（以场馆安排为准）。',tip:'提前问场次；1 岁内以看为主。'},
+      {name:'母婴室 / 休息',age:'—',detail:'多配母婴室、儿童厕、饮水。',tip:'善用母婴室补奶换尿布。'}
+    ],
+    half:'09:30 出发 → 10:00 绘本区共读\n11:00 互动展项\n12:00 周边午餐\n14:00 手工 / 二刷\n15:30 返程',
+    full:'同上，加逛常设展厅，16:30 返程。'
+  },
+  park:{
+    intro:'公园 / 湿地 / 广场是城市绿肺，树荫多、推车友好，天然放电场，且大多免费。',
+    scenes:[
+      {name:'大草坪放电区',age:'很适合',detail:'奔跑、踢球、放风筝、野餐，最自由。',tip:'带野餐垫；正午躲树荫。'},
+      {name:'沙坑 / 儿童区',age:'很适合',detail:'沙坑、小滑梯、摇摇马，低龄友好。',tip:'自带小铲；注意卫生。'},
+      {name:'林荫步道 / 湖边',age:'很适合',detail:'散步、看荷花、喂鱼、坐船，推车友好。',tip:'走平缓段；湖边盯紧防落水。'},
+      {name:'游乐设施区',age:'一般',detail:'小火车、碰碰车等（收费项目看园区）。',tip:'按身高；1 岁内少坐。'},
+      {name:'野餐 / 餐饮',age:'—',detail:'园内多无餐厅，建议自带野餐；或就近快餐 / 商场。',tip:'自带饮水零食；垃圾带走。'}
+    ],
+    half:'09:00 出发 → 09:30 草坪放电\n10:30 沙坑 / 儿童区\n12:00 草坪野餐\n14:00 林荫步道散步\n15:30 返程',
+    full:'同上，加乘船 / 游乐设施，17:00 返程。'
+  },
+  relax:{
+    intro:'就近轻松溜达、亲子放松，结合宝宝状态灵活安排。',
+    scenes:[
+      {name:'散步 / 看风景',age:'很适合',detail:'慢走、看花看人，推车友好。',tip:'别勉强，状态不好就回家。'},
+      {name:'就近餐饮',age:'—',detail:'商圈 / 餐饮解决。',tip:'选有儿童椅的店。'}
+    ],
+    half:'视状态灵活安排，单次 1–2h 即可。',
+    full:'同上。'
+  }
+};
+/* ===== 地点「专属攻略」库（按名称查，每处都是针对该地点的真实内容，非类别模板） =====
+   字段：intro 开场 / scenes 该地点真实游玩场景 / mapNote 园区分区·地图 / shows 表演或定时活动 / half·full 推荐路线
+   来源：联网检索该地点真实场馆、分区、路线、表演时间（截至 2026-10，具体以园区当日公告为准）。 */
+const PLACE_STRAT={
+  '福州动物园':{
+    intro:'福州动物园（晋安区新店镇新园路100号；门票成人30元，1.2米/6岁以下儿童免费；8:00–18:00、16:30停止入园）是市区最经典的带娃认知地，园里有近150种、1000多只动物。园子依山而建：主路平坦能推车，但通往各馆的小路多台阶，建议带轻便推车；怕累可坐观光车（10元/人）到山顶再步行下山。',
+    scenes:[
+      {name:'海狮馆（行为展示/表演）',age:'很适合',detail:'每天有海狮行为展示，是宝宝最兴奋的环节；入园先看公告牌上的场次。',tip:'提前10分钟占前排中间；表演结束趁兴逛相邻展区。'},
+      {name:'长颈鹿馆 / 亚洲象馆 / 食草区',age:'很适合',detail:'长脖子和「大块头」最抓低龄宝宝眼球，上午动物更活跃。',tip:'猛兽区（狮/豹/狼/黑熊）噪音大，婴儿控制停留。'},
+      {name:'萌宠乐园（梅花鹿/羊驼/柯尔鸭/小香猪/兔子）',age:'适合',detail:'入口处可零距离互动喂食，亲子高分场景。',tip:'按园区规定投喂专用草料；1岁内以看为主、少接触；备湿巾。'},
+      {name:'猴山 / 猩猩区 / 金丝猴',age:'适合',detail:'松鼠猴爬铁丝网、黑猩猩招手，宝宝看呆。',tip:'人多抱稳防走失；短停留。'},
+      {name:'天鹅湖 / 涉禽湖 / 火烈鸟 / 丹顶鹤',age:'很适合',detail:'水禽区平坦好推车、视野开阔。',tip:'湖边盯紧防落水；可顺路喂鱼。'},
+      {name:'两栖爬行馆 / 知鱼池 / 昆虫馆',age:'一般',detail:'室内偏暗、昆虫多；知鱼池是走累了的休息中转区。',tip:'展缸暗，1岁内别久留；带薄外套。'}
+    ],
+    mapNote:'园区依山，推荐「坐观光车到山顶再步行下山」最省力。大致分区：入口→海狮馆→天鹅湖→长颈鹿馆→涉禽湖→亚洲象馆→两栖爬行馆→知鱼池（休息）→犀牛/斑马/袋鼠→细尾獴/耳廓狐→昆虫馆→猴山/猩猩→猛兽区→出园。',
+    shows:'近期饲喂讲解（以当日公告为准）：金丝猴 周日9:30、浣熊 周日10:30、陆龟 周六日10:30、河马 周六日15:30、长臂猿 周日15:00、袋鼠 周六10:00/16:00；海狮行为展示每日有场次。',
+    half:'09:00 前入园（避开人潮、动物最活跃）→ 海狮馆看表演 → 天鹅湖/长颈鹿馆 → 萌宠乐园喂食 → 猴山/猩猩 → 知鱼池休息 → 12:30 出园或隔壁儿童公园/森林公园接着玩',
+    full:'同上，下午加乘观光车游园 + 二刷喜欢的动物，16:00 前出园（16:30停止入园）'
+  },
+  '哇呜动物乐园':{
+    intro:'哇呜Park 哇呜动物乐园（闽侯上街镇橘园洲大桥下，就在农林大学/橘园洲一带，营业周二–周日 9:30–18:00、周一店休）是福州新晋的「体感式」动物互动乐园，占地约30亩，主打动物体验+宠物友好+自然教育。入园送干草包+青菜包（可免费续两次），园内所有小动物都能近距离接触和喂食、游玩项目不二次消费。',
+    scenes:[
+      {name:'中央牧场 / 萌宠互动（梅花鹿/羊驼/小羊/矮马）',age:'很适合',detail:'可近距离喂干草，温顺好拍。',tip:'用园区草料喂（别自带蔬菜）；1岁内以看为主。'},
+      {name:'鹦鹉友好区 / 学舌区',age:'适合',detail:'鹦鹉会学说话，可放手上让工作人员帮忙拍照。',tip:'工作人员协助，注意小手别被啄。'},
+      {name:'爬宠互动区（苏卡达陆龟/亚达伯拉象龟/蛇/蜥蜴）',age:'一般',detail:'陆龟悠闲踱步；胆大可摸蛇。',tip:'摸后洗手；1岁内远观。'},
+      {name:'水生动植物区 / 黑天鹅 / 柯达鸭 / 卡皮巴拉（水豚）',age:'适合',detail:'水上动物悠闲，水豚憨态可掬。',tip:'岸边盯紧防落水。'},
+      {name:'无动力游乐（滑索/秋千/滑梯/爬网/吊床/三轮车）',age:'很适合',detail:'放电首选，全部免费。',tip:'每项玩一会儿就换；脱鞋区防滑。'},
+      {name:'龟兔赛跑 & 盖章（上下午各一场）',age:'适合',detail:'定时「龟兔赛跑」互动，看完送大彩色气球；盖印章可换纪念徽章。',tip:'看节目时间别错过；有咖啡厅/西餐简餐也可自带食物补给。'}
+    ],
+    mapNote:'乐园是一大片围起来的牧场+步道，动线简单基本环形：入口领草料→中央牧场（鹿/羊驼）→鹦鹉区→水禽/水豚区→爬宠区→研学教室→无动力游乐区→咖啡厅/野餐区；低矮洗手台方便宝宝清洁。',
+    shows:'每日上午、下午各一场「龟兔赛跑」互动（送气球）；不同时段有盖章活动换纪念徽章。无传统动物表演，互动喂食即看点。',
+    half:'10:00 到园领草料 → 中央牧场喂鹿/羊驼 → 鹦鹉区 → 水禽/水豚 → 爬宠区 → 无动力游乐放电 → 咖啡厅/野餐补给 → 16:00 前返程',
+    full:'同上，傍晚前都能玩；自带野餐垫在草坪野餐更惬意，18:00 闭园前出。'
+  },
+  '福州儿童公园':{
+    intro:'福州儿童公园（晋安区新园路56号，动物园东侧、森林公园南面；免费入园、游乐设施单独收费；6:00–22:00）是福州主城区遛娃「快乐根据地」，绿化超70%，按年龄分6大主题园区，适合1岁到12岁。',
+    scenes:[
+      {name:'小伙伴园（1–4岁低龄专属）',age:'很适合',detail:'软包设施、低矮滑梯、摇摇马、沙地，安全系数高。',tip:'1岁多正好；沙池带小铲。'},
+      {name:'戏水园（夏季6–10月）',age:'很适合',detail:'浅水区+喷水装置全免费，玩水超凉快。',tip:'备换洗衣物/拖鞋/毛巾；1岁内仅脚踩。'},
+      {name:'活力园 / 极限运动园（放电）',age:'适合',detail:'攀爬网、大滑梯、秋千、攀岩墙、87米勇敢者栈道。',tip:'每项玩一会儿；家长就近休息。'},
+      {name:'收费游乐园（旋转木马/碰碰车/小过山车/海盗船）',age:'一般',detail:'单次10–30元，低龄选温和项目。',tip:'按需不全会玩；买套票更划算。'},
+      {name:'大草坪 + 艺术园（野餐/放风筝/彩绘墙/科普）',age:'很适合',detail:'开阔自由，好拍照。',tip:'自带野餐垫；正午躲树荫。'},
+      {name:'魔法森林（林间树屋/探险）',age:'适合',detail:'氛围感拉满，遛娃拍照都合适。',tip:'林间注意防蚊。'}
+    ],
+    mapNote:'6大园区环绕：小伙伴园（低龄）→ 活力园/极限运动园（放电）→ 戏水园（夏季）→ 收费游乐园 → 大草坪+艺术园 → 魔法森林；免费无动力区足够玩半天。',
+    shows:'节假日（春节/五一/六一/国庆/中秋）主广场有免费主题活动：亲子闯关、卡通巡游、泡泡秀、非遗手作、少儿表演，分时开展、无需预约。',
+    half:'09:30 前入园（人少不晒）→ 小伙伴园（低龄放电）→ 活力园攀爬 → 大草坪野餐 → 戏水园（夏季）→ 16:00 后或傍晚再玩一阵',
+    full:'同上，加收费游乐园项目；傍晚草坪放风筝/看夕阳，22:00 前出园'
+  },
+  '乌龙江湿地公园':{
+    intro:'乌龙江湿地公园（淮安段，农林大学附近；免费、开阔人少、好推车）是就近「天然放电场」，有大草坪、江边步道、浅滩沙地。',
+    scenes:[
+      {name:'大草坪奔跑 / 放风筝 / 野餐',age:'很适合',detail:'最自由开阔。',tip:'自带野餐垫；正午躲树荫。'},
+      {name:'江边步道散步 / 看船',age:'很适合',detail:'平坦推车友好、江风凉。',tip:'江岸无护栏，盯紧防落水。'},
+      {name:'浅滩沙地玩沙 / 戏水',age:'很适合',detail:'宝宝挖沙最爱。',tip:'挖沙玩具+遮阳棚；只玩脚踝深浅水。'},
+      {name:'看夕阳 / 候鸟（傍晚）',age:'适合',detail:'傍晚最美。',tip:'傍晚去，避开正午。'}
+    ],
+    mapNote:'淮安段沿江带状：入口→大草坪→江边步道→浅滩沙地，基本平地。',shows:'',
+    half:'16:00 后出发（避正午）→ 草坪放电 → 江边散步看船 → 浅滩玩沙 → 看夕阳 → 18:30 返程野餐',
+    full:'同上，上午也可，半天为宜。'
+  },
+  '福州沙滩公园':{
+    intro:'福州沙滩公园（乌龙江沙滩·淮安，农林大学旁；免费、真有沙的「小海滩」）是宝宝玩沙最开心的地方，但河岸无护栏、几乎无遮阳。',
+    scenes:[
+      {name:'人工沙滩玩沙 / 堆城堡',age:'很适合',detail:'低龄最爱。',tip:'挖沙玩具+遮阳棚；河岸无护栏务必盯紧。'},
+      {name:'江边浅水戏水 / 踏浪',age:'一般',detail:'夏季开心。',tip:'1岁内仅脚踩；备换洗衣物。'},
+      {name:'大草坪放风筝 / 野餐',age:'很适合',detail:'平坦好推车。',tip:'自带野餐垫；正午躲树荫。'}
+    ],
+    mapNote:'沙滩+草坪沿江：入口→沙滩→江边浅水→大草坪，平地为主。',shows:'',
+    half:'09:00 或 16:00（避正午）→ 沙滩玩沙 → 浅水踏浪 → 草坪野餐 → 11:30/18:00 返程',
+    full:'同上，半天为宜，带齐遮阳与换洗。'
+  },
+  '闽江公园':{
+    intro:'闽江公园（南园/北园；沿江、平坦无台阶、江风凉快、树多）适合傍晚散步遛娃，北园近金山万达吃饭方便。',
+    scenes:[
+      {name:'沿江步道散步 / 看船',age:'很适合',detail:'推车友好、江风凉。',tip:'傍晚去最舒服；江边盯紧。'},
+      {name:'儿童小乐园',age:'适合',detail:'小型游乐放电。',tip:'设施简易，短玩即可。'},
+      {name:'沿线小吃 / 咖啡',age:'—',detail:'歇脚补给。',tip:'北园近金山万达，吃饭方便。'}
+    ],
+    mapNote:'沿江带状公园，南园/北园分段；选平缓段散步即可。',shows:'',
+    half:'17:00 后出发 → 沿江步道散步看船 → 儿童小乐园 → 北园万达/小吃吃饭 → 19:00 返程',
+    full:'同上，傍晚2h。'
+  },
+  '烟台山公园':{
+    intro:'烟台山公园（仓山；洋房街区+大草坪+咖啡店，路面平、树荫多不晒、推车友好、好拍照）是「散步拍照+避暑哺乳」两不误的文艺遛娃地。',
+    scenes:[
+      {name:'洋房街区漫步',age:'很适合',detail:'老仓山风貌，平地好推车。',tip:'推车友好；人多牵好。'},
+      {name:'大草坪撒欢',age:'很适合',detail:'拍照+放电。',tip:'自带野餐垫；树荫下歇脚。'},
+      {name:'咖啡店 / 餐厅歇脚',age:'—',detail:'空调避暑、哺乳换尿布。',tip:'街区价位偏高；可堂食歇脚。'}
+    ],
+    mapNote:'仓山历史文化街区+山顶公园，石板路基本平缓；从亭下路/爱国路一带慢慢逛上去。',shows:'',
+    half:'09:30 出发 → 街区漫步拍照 → 大草坪撒欢 → 咖啡店歇脚哺乳 → 12:00 街区午餐 → 14:00 返程',
+    full:'同上，下午可加逛展馆，半天。'
+  },
+  '西湖+左海公园':{
+    intro:'西湖+左海公园（鼓楼；经典老牌、树荫浓、可游船、有母婴室）是市区最成熟的亲子公园，两园已连通成片。',
+    scenes:[
+      {name:'脚踏船 / 游船',age:'很适合',detail:'宝宝坐船看景最兴奋。',tip:'抱稳坐好；选有顶棚船防晒。'},
+      {name:'大草坪 / 看鸽 / 喂鱼',age:'很适合',detail:'开阔放电。',tip:'自带野餐垫；湖边盯紧。'},
+      {name:'树荫步道散步',age:'很适合',detail:'清凉不晒。',tip:'树多蚊多，备驱蚊。'},
+      {name:'园内小吃摊 / 周边餐饮',age:'—',detail:'补给方便。',tip:'省府/湖东路餐饮多。'}
+    ],
+    mapNote:'西湖与左海已连通：西湖（开化屿/谢坪屿/窑角屿三岛+环湖）→ 左海（大草坪）相连；环湖步道平缓。',shows:'',
+    half:'09:00 出发 → 大草坪喂鱼看鸽 → 脚踏船游湖 → 树荫步道 → 12:00 周边午餐 → 14:00 返程',
+    full:'同上，加逛开化屿等，半天。'
+  },
+  '金牛山·福道':{
+    intro:'金牛山·福道（空中钢架栈道；部分段平缓可推车、看江景）是「城市森林步道」，但多坡道台阶，带娃只走平缓段。',
+    scenes:[
+      {name:'平缓段栈道散步 / 看江景',age:'适合',detail:'空中视角独特。',tip:'只走平缓段（金牛山体育公园一侧），别爬全程。'},
+      {name:'沿途观景平台',age:'适合',detail:'拍照歇脚。',tip:'护栏高但抱稳；婴儿用背带更稳。'},
+      {name:'山脚餐饮',age:'—',detail:'回程补给。',tip:'沿途无餐厅，金牛山脚有餐饮。'}
+    ],
+    mapNote:'福道主线依山，推荐从「金牛山体育公园」或「国光公园」入口走平缓环线段；带娃别走全线。',shows:'',
+    half:'17:00 后出发 → 平缓段栈道散步看江 → 观景平台 → 山脚吃饭 → 19:00 返程',
+    full:'同上，傍晚1.5–2h。'
+  },
+  '三坊七巷':{
+    intro:'三坊七巷（鼓楼；明清古街区、文化氛围好）但人多、推车不便、无遮阳，仅清晨/傍晚浅逛+吃小吃。',
+    scenes:[
+      {name:'逛老街 / 看建筑',age:'一般',detail:'木构古厝拍照。',tip:'石板路推车颠；清晨/傍晚人少。'},
+      {name:'吃小吃（鱼丸/肉燕/花生汤）',age:'—',detail:'宝宝浅尝。',tip:'游人拥挤，浅吃即走。'},
+      {name:'街区展馆（非遗/民俗）',age:'一般',detail:'短逛。',tip:'部分需安静；1岁内不宜久留。'}
+    ],
+    mapNote:'南后街为主轴，三坊七巷纵横；从南后街慢慢走，巷子深窄推车不便。',shows:'',
+    half:'08:00 或 17:30（避人流正午）→ 南后街浅逛 → 吃小吃 → 18:30 返程',
+    full:'同上，1.5h 浅逛。'
+  },
+  '永泰·欧乐堡':{
+    intro:'永泰·欧乐堡海洋世界（永泰县；室内空调不晒，10万+海洋生物、水下剧场、海豚馆演出、科普丰富；成人票约159元、优待119元）是夏天/雨天带娃救星，建议安排一整天或住一晚。',
+    scenes:[
+      {name:'海豚 / 海洋动物表演（水下剧场）',age:'很适合',detail:'招牌大秀。',tip:'提前看场次占座；前排可能溅水。'},
+      {name:'海洋生物展区 / 海底隧道',age:'很适合',detail:'鲨鱼/海龟/水母分区，视觉冲击强。',tip:'展缸偏暗抱稳；隧道人多抱好。'},
+      {name:'互动展项 / 科普',age:'一般',detail:'边玩边学。',tip:'室内空调带薄外套。'},
+      {name:'童话乐园（室外，另票49元）',age:'适合',detail:'旋转等温和项目。',tip:'按身高；低龄选温和项。'},
+      {name:'园内餐饮 / 配套',age:'—',detail:'吃喝一体。',tip:'馆内餐饮可，县城闽菜补充。'}
+    ],
+    mapNote:'海洋世界馆（表演+展区+隧道）为主，旁边童话乐园；动线简单跟着指引走。',
+    shows:'海豚馆等演出每日多场（以当日公告为准）；入园先拍节目单。',
+    half:'(当天往返紧凑) 09:30 出发 → 11:00 表演 → 展区/隧道 → 14:00 二刷 → 16:00 返程',
+    full:'住一晚更轻松：Day1 海洋世界+表演；Day2 童话乐园/周边，次日返程'
+  },
+  '贵安新天地':{
+    intro:'贵安新天地（连江；综合度假区：欢乐世界、水世界、溪山温泉，室内外都有，温泉全家放松）适合安排一整天。',
+    scenes:[
+      {name:'溪山温泉（浅水区）',age:'一般',detail:'全家泡汤放松。',tip:'1岁偏小仅戏浅水；注意水温防滑。'},
+      {name:'欢乐世界（游乐）',age:'适合',detail:'过山车/旋转等。',tip:'低龄选温和项目；按需。'},
+      {name:'水世界（夏季）',age:'适合',detail:'戏水。',tip:'1岁内浅水；备泳具。'},
+      {name:'度假配套餐饮',age:'—',detail:'吃喝一体。',tip:'新天地内餐饮+温泉配套。'}
+    ],
+    mapNote:'度假区集中，温泉/欢乐世界/水世界分区；跟着导览走。',shows:'',
+    half:'09:30 出发 → 欢乐世界温和项目 → 溪山温泉浅水 → 园区午餐 → 14:00 二刷 → 16:30 返程',
+    full:'同上，住一晚更从容。'
+  },
+  '罗源湾':{
+    intro:'罗源湾海洋世界（罗源；海洋馆+海上乐园+冰雕馆，成人通票约158元）与欧乐堡类似但更偏北；冰雕馆太冷宝宝别进。',
+    scenes:[
+      {name:'海洋馆 / 海底隧道',age:'很适合',detail:'上百种海洋生物。',tip:'展缸暗抱稳；隧道人多。'},
+      {name:'海上乐园',age:'适合',detail:'戏水。',tip:'1岁内浅水；备换洗。'},
+      {name:'冰雕馆',age:'谨慎',detail:'低温。',tip:'太冷，宝宝别进。'},
+      {name:'滨海餐饮',age:'—',detail:'县城闽菜补充。',tip:'馆内/滨海餐饮。'}
+    ],
+    mapNote:'海洋世界+海上乐园+冰雕馆分区；动线跟着指引。',shows:'',
+    half:'09:30 出发 → 海洋馆 → 海上乐园 → 园区午餐 → 14:00 二刷 → 16:30 返程',
+    full:'同上，一天。'
+  },
+  '平潭岛':{
+    intro:'平潭岛（龙王头；真正看海、玩沙玩水最开心，但路程远建议住一晚）是「海边度假」级遛娃地。',
+    scenes:[
+      {name:'龙王头沙滩玩沙 / 踏浪',age:'很适合',detail:'低龄最爱。',tip:'挖沙+遮阳棚；海无护栏盯紧。'},
+      {name:'北部生态廊道 / 风车田',age:'适合',detail:'出片散步。',tip:'自驾沿线停；风大保暖。'},
+      {name:'海鲜大排档 / 品牌餐饮',age:'—',detail:'玩沙后就近吃。',tip:'建议住一晚。'}
+    ],
+    mapNote:'环岛：龙王头沙滩（县城旁）→ 北部生态廊道（风车）→ 各景点分散，自驾最佳。',shows:'',
+    half:'(当天往返紧凑) 09:00 出发(远) → 龙王头玩沙踏浪 → 海鲜午餐 → 14:00 北部廊道 → 17:00 返程',
+    full:'住一晚：Day1 龙王头+县城；Day2 北部廊道/长江澳风车 → 次日返程'
+  },
+  '花海公园':{
+    intro:'花海公园（南江滨·仓山；四季有花、开阔好跑、免费，但正午少遮阴凉爽时段去）适合上午/下午/傍晚放风。',
+    scenes:[
+      {name:'大片花海拍照 / 奔跑',age:'很适合',detail:'开阔放电。',tip:'正午少遮阴凉爽去；带遮阳。'},
+      {name:'大草坪放风筝 / 野餐',age:'很适合',detail:'自由。',tip:'自带野餐垫。'},
+      {name:'江边散步',age:'很适合',detail:'推车友好。',tip:'江边盯紧。'}
+    ],
+    mapNote:'南江滨带状：花海区+大草坪+江边步道，平地。',shows:'',
+    half:'09:00 或 16:00 → 花海奔跑拍照 → 大草坪野餐 → 江边散步 → 11:30/18:00 返程',
+    full:'同上，半天。'
+  },
+  '梁厝街区':{
+    intro:'梁厝街区（三江口·仓山；新晋网红古厝村落，路面平推车友好、有树荫、人少清净）适合上午/下午慢逛。',
+    scenes:[
+      {name:'古厝漫步 / 看稻田',age:'很适合',detail:'田园风。',tip:'平地好推车；人少清净。'},
+      {name:'大草坪 / 田园放电',age:'很适合',detail:'自由跑。',tip:'自带野餐垫。'},
+      {name:'街区简餐咖啡',age:'—',detail:'补给。',tip:'人少，简餐即可。'}
+    ],
+    mapNote:'村落+田园格局，主街平坦；从梁厝特色历史文化街区慢慢走。',shows:'',
+    half:'09:30 出发 → 古厝漫步 → 稻田/草坪放电 → 简餐咖啡 → 14:00 返程',
+    full:'同上，半天。'
+  },
+  '飞凤山奥体公园':{
+    intro:'飞凤山奥体公园（仓山；超大草坪放电首选、免费，但少遮阴凉爽时段去）适合上午/傍晚。',
+    scenes:[
+      {name:'大草坪放风 / 放风筝',age:'很适合',detail:'最自由。',tip:'自带野餐垫；正午躲树荫。'},
+      {name:'山坡滑梯 / 散步',age:'适合',detail:'放电。',tip:'坡道牵好。'},
+      {name:'周边奥体 / 浦上吃饭',age:'—',detail:'方便。',tip:'周边餐饮多。'}
+    ],
+    mapNote:'山体+大草坪，选平缓草坪段即可。',shows:'',
+    half:'09:00 或 16:00 → 大草坪放风 → 山坡滑梯 → 奥体/浦上吃饭 → 11:30/18:00 返程',
+    full:'同上，半天。'
+  },
+  '福州国家森林公园':{
+    intro:'福州国家森林公园（新店；树木茂密超阴凉、天然氧吧、可认植物，但大、配好午睡）适合上午半天。',
+    scenes:[
+      {name:'林间步道散步 / 认植物',age:'很适合',detail:'阴凉认知。',tip:'走平缓段；防蚊。'},
+      {name:'大草坪放电',age:'很适合',detail:'开阔。',tip:'自带野餐垫。'},
+      {name:'珍稀植物园',age:'一般',detail:'看点。',tip:'短逛；1岁内远观。'},
+      {name:'园中小卖部 / 新店吃饭',age:'—',detail:'补给。',tip:'园内有小卖部。'}
+    ],
+    mapNote:'园区大，推荐「主入口→大草坪→林间步道」平缓环线，别走太深。',shows:'',
+    half:'09:00 出发 → 林间步道（阴凉）→ 大草坪放电 → 小卖部补给 → 12:30 返程（或隔壁儿童公园/动物园连玩）',
+    full:'同上，半天。'
+  },
+  '省少儿图书馆':{
+    intro:'福建省少儿图书馆（鼓楼·东街；室内空调免费、雨天/闷热救星、培养阅读，需保持安静）适合上午/下午。',
+    scenes:[
+      {name:'绘本区共读',age:'很适合',detail:'低龄温馨。',tip:'选布书/硬板书防撕咬；安静。'},
+      {name:'互动设施 / 阅读活动',age:'一般',detail:'短时。',tip:'保持安静；短停留。'},
+      {name:'东街口商圈餐饮',age:'—',detail:'齐全（母婴室+儿童餐）。',tip:'周边吃饭方便。'}
+    ],
+    mapNote:'馆内分层：低龄绘本区+互动区；跟着指引。',shows:'',
+    half:'09:30 出发 → 绘本区共读 → 互动设施 → 12:00 东街口午餐 → 14:00 返程',
+    full:'同上，半天。'
+  },
+  '商场母婴中心':{
+    intro:'商场母婴中心（仓山万达/爱琴海等；空调避暑、哺乳换尿布方便、吃饭轻松）是「纯遛娃偏低龄」的省心选项。',
+    scenes:[
+      {name:'母婴室哺乳 / 换尿布',age:'很适合',detail:'刚需。',tip:'善用母婴室。'},
+      {name:'室内游走 / 看展',age:'适合',detail:'轻松。',tip:'商场人流大牵好。'},
+      {name:'商场餐饮',age:'—',detail:'吃喝一体。',tip:'本身就吃饭方便。'}
+    ],
+    mapNote:'商场内：母婴室+儿童楼层+餐饮；按商场指引。',shows:'',
+    half:'全天任意 → 母婴室补奶换尿布 → 室内游走 → 商场午餐 → 16:00 返程',
+    full:'同上，2h。'
+  },
+  '海峡文化艺术中心':{
+    intro:'海峡文化艺术中心（三江口；造型出片、室内可避雨、江边平坦，但展陈偏成人）适合上午/下午。',
+    scenes:[
+      {name:'建筑打卡 / 江景散步',age:'适合',detail:'出片。',tip:'江边平坦；户外部分。'},
+      {name:'室内展厅',age:'一般',detail:'短逛。',tip:'展陈偏成人；1岁内不宜久留。'},
+      {name:'配套较少',age:'—',detail:'自带简餐。',tip:'三江口配套少，回程吃。'}
+    ],
+    mapNote:'五栋花瓣建筑+江边广场；沿江散步即可。',shows:'',
+    half:'09:30 出发 → 建筑打卡拍照 → 江边散步 → 自带简餐 → 14:00 返程',
+    full:'同上，半天。'
+  },
+  '连江·奇达村':{
+    intro:'连江·奇达村（海边渔村；小众出片、玩水，但路程远配午睡）适合一天。',
+    scenes:[
+      {name:'海边栈道 / 看渔村',age:'适合',detail:'出片。',tip:'栈道牵好；海风大保暖。'},
+      {name:'踏浪 / 玩水',age:'一般',detail:'夏季。',tip:'1岁内浅水；海无护栏盯紧。'},
+      {name:'渔村海鲜大排档',age:'—',detail:'简易。',tip:'规模小选择不多。'}
+    ],
+    mapNote:'渔村+海边，自驾沿线停；从奇达村上观海栈道。',shows:'',
+    half:'(当天往返紧凑) 09:00 出发(远) → 海边栈道 → 踏浪 → 渔村午餐 → 14:00 返程',
+    full:'同上，一天。'
+  },
+  '鼓岭':{
+    intro:'鼓岭（鼓山山上；夏天比市区凉约10度、树多，但多坡道背带更合适）适合上午/下午半天。',
+    scenes:[
+      {name:'山上漫步 / 看云海',age:'适合',detail:'清凉。',tip:'多坡道用背带；婴儿别推车爬坡。'},
+      {name:'亲子民宿 / 餐厅',age:'—',detail:'歇脚。',tip:'山上民宿简餐。'},
+      {name:'柱里 / 柳杉王公园',age:'适合',detail:'林间。',tip:'林间防蚊。'}
+    ],
+    mapNote:'山上片区：柳杉王公园/柱里/宜夏别墅；自驾上山，平缓段散步。',shows:'',
+    half:'09:00 出发(上山) → 柳杉王/柱里漫步 → 民宿午餐歇脚 → 14:00 返程',
+    full:'同上，半天。'
+  }
+};
+/* 按名称精确或宽松匹配专属攻略；命中即返回该地点的真实内容 */
+function getPlaceStrat(p){
+  if(!p) return null;
+  const tryKeys=[p.name, normCore(p.name), cleanName(p.name), p.name.replace(/\s/g,'')];
+  for(const k of tryKeys){ if(PLACE_STRAT[k]) return PLACE_STRAT[k]; }
+  const c=normCore(p.name);
+  for(const k in PLACE_STRAT){ if(c && (c.indexOf(k)>=0 || k.indexOf(c)>=0)) return PLACE_STRAT[k]; }
+  return null;
+}
+const STRAT_AGE_CLS={'很适合':'good','适合':'good','一般':'mid','谨慎':'warn','—':'na'};
+function ageStageNote(months){
+  if(months<12) return '1 岁内以"看 + 感官体验"为主，少接触、短停留，重点防走失与防晒；';
+  if(months<24) return '1–2 岁能走能跑但易累，每项玩一会儿就换、配合午睡；';
+  if(months<36) return '2–3 岁精力旺、能沟通，可适当加点互动与远途；';
+  return '3 岁以上可参与更多项目，注意安全与节奏即可。';
+}
+/* 攻略按"天"缓存：同一天点开直接用缓存，不重复生成（可点「重新生成」强制刷新） */
+function stratKey(id){ return 'fz_strategy_'+id; }
+function loadStrategy(id){ try{ const s=JSON.parse(localStorage.getItem(stratKey(id))||'null'); if(s&&s.date===hotSeed()) return s.html; }catch(e){} return null; }
+function saveStrategy(id,html){ try{ localStorage.setItem(stratKey(id),JSON.stringify({date:hotSeed(),html})); }catch(e){} }
+function stratScenesHtml(scenes){
+  return scenes.map(sc=>{
+    const ac=STRAT_AGE_CLS[sc.age]||'na';
+    return '<div class="strat-scene"><h4>'+sc.name+' <span class="strat-age '+ac+'">适龄：'+sc.age+'</span></h4>'+
+      '<div class="strat-detail">'+sc.detail+'</div>'+
+      (sc.tip?('<div class="strat-tip">💡 '+sc.tip+'</div>'):'')+'</div>';
+  }).join('');
+}
+/* 未命中专属库时，由「该地点自身真实属性」生成非通用攻略（场景取自本地点真实游玩项） */
+function deriveStrat(p){
+  const cat=catOf((p.name||'')+(p.sub||''));
+  const months=getAgeMonths();
+  const items=(p.play||'').split('、').filter(Boolean);
+  const scenes=items.length?items.map(it=>({name:it,age:'适合',detail:howToPlay(it,cat,months),tip:''})):
+    [{name:'到点后结合现场灵活安排',age:'适合',detail:'结合宝宝状态灵活安排，注意防晒与补水。',tip:''}];
+  const fullDay=/(天|1 天|全天)/.test(p.time||'');
+  const head=items.slice(0,3).join(' → ');
+  const route=fullDay?('09:00 出发 → '+head+' → 午餐 → 二刷喜欢的 → 17:00 返程')
+                       :('09:00 或 16:00（避正午）→ '+head+' → 12:30/18:00 返程');
+  return {intro:'以下是 '+p.name+' 的带娃攻略，场景取自该地点真实游玩项；具体开放与表演以现场公告为准。',scenes,mapNote:p.sub||'',shows:'',half:route,full:route};
+}
+/* 生成某地点的「专属详细攻略」：优先用联网查得的真实专属库，否则按本地点真实属性生成 */
+function buildStrategy(p){
+  const e=est(p), months=getAgeMonths(), age=ageLabel(months);
+  const r=p.rating?('★ '+p.rating+(p.cost?(' / 人均¥'+p.cost):'')):'高德未收录评分（点「查评分」看真实点评）';
+  const S=getPlaceStrat(p)||deriveStrat(p);
+  const fullDay=/(天|1 天|全天)/.test(p.time||'');
+  const isCached=!!loadStrategy(p.id);
+  const scenesHtml=stratScenesHtml(S.scenes);
+  const fitTxt='适龄适配度 <b class="fit-'+(p.fit>=80?'great':p.fit>=60?'ok':p.fit>=40?'mid':p.fit>=20?'low':'no')+'">'+(p.fit==null?0:p.fit)+'</b> '+(p.fitLabel||'')+(p.fitReason?('：'+p.fitReason):'');
+  const mapSec=S.mapNote?('<div class="guide-sec"><b>🗺️ 园区地图 / 分区</b><div class="guide-text">'+S.mapNote+'</div></div>'):'';
+  const showSec=S.shows?('<div class="guide-sec"><b>🎪 表演 / 定时活动</b><div class="guide-text">'+S.shows+'</div></div>'):'';
+  const bz=p.business?('<div class="guide-sec"><b>🕐 营业时间</b> '+p.business+'</div>'):'';
+  const notes=loadGuideNotes(p.id).replace(/</g,'&lt;');
+  return '<div class="guide-h">📋 '+p.name+' · 详细带娃攻略</div>'+
+    '<div class="guide-sub">'+p.sub+' ｜ 距'+start.name+'约 '+e.km+' km · 驾车约 '+e.min+' min ｜ 宝宝 '+age+(isCached?' ｜ 🗓️ 今日已生成（点「重新生成」可刷新）':'')+'</div>'+
+    '<div class="guide-sec"><b>⭐ 评分</b> '+r+(p.address?(' ｜ '+p.address):'')+'</div>'+
+    '<div class="guide-sec"><b>👶 适龄总评</b><div class="guide-text">'+fitTxt+'<br><br>'+ageStageNote(months)+'</div></div>'+
+    '<div class="guide-sec"><b>📖 场景总览</b><div class="guide-text">'+S.intro+'</div></div>'+
+    '<div class="guide-sec"><b>🎬 具体游玩场景</b>'+scenesHtml+'</div>'+
+    mapSec+showSec+
+    '<div class="guide-sec"><b>🗓️ 推荐路线（'+(fullDay?'全天':'半天')+'）</b><div class="strat-timeline">'+ (fullDay?S.full:S.half) +'</div></div>'+
+    bz+
+    '<div class="guide-sec"><b>🍽️ 吃饭 / 野餐</b> '+p.food+'</div>'+
+    '<div class="guide-sec"><b>⚠️ 注意事项</b><div class="guide-text">'+buildWarn(p,months)+'</div></div>'+
+    '<div class="guide-sec"><b>📝 现场任务 / 备注</b><div class="guide-text" style="background:#fff;border:1px solid var(--border)"><textarea id="guideNotes" style="width:100%;min-height:70px;border:none;outline:none;font:inherit;resize:vertical" placeholder="在现场随时补充：要玩的、要带的、要注意的…（自动存本机）">'+notes+'</textarea></div><div class="guide-note-row"><span id="guideNoteTip" class="note"></span><button class="navbtn" onclick="saveGuideNotes('+p.id+')">💾 保存备注</button></div></div>'+
+    '<div class="guide-btns"><button class="navbtn" onclick="amapNav('+p.id+')">🧭 高德导航</button>'+
+    '<button class="navbtn" onclick="openReview('+p.id+')">🔗 查评分</button>'+
+    '<button class="navbtn" onclick="openStrategy('+p.id+',true)">🔄 重新生成</button>'+
+    '<button class="navbtn" onclick="closeGuide()">关闭</button></div>';
+}
+window.openStrategy=function(id,force){
+  const p=PLACES.find(x=>x.id===id); if(!p)return;
+  const cached=force?null:loadStrategy(id);
+  document.getElementById('guideBody').innerHTML= cached || buildStrategy(p);
+  if(!cached) saveStrategy(id, document.getElementById('guideBody').innerHTML);
+  document.getElementById('guideModal').classList.add('show');
+};
+/* 由高德 POI 推断本页所需字段（含评分/人均），并补上有实质内容的游玩/卖点/吃饭建议 */
+function inferFromPOI(p,w,id){
+  const name=cleanName(p.name), type=p.type||'', combo=name+type;
+  let purpose='walk', indoor=0, shade=0, wW='sunny cloudy', tT='morning afternoon';
+  if(/海洋|水族/.test(combo)){purpose='cognitive indoor';indoor=1;wW+=' rain hot';}
+  else if(/儿童|亲子|游乐|动物园|科技|科普|图书馆|少年|幼儿|萌宠/.test(combo)){purpose='cognitive';}
+  else if(/沙滩|海滨|海滩/.test(combo)){purpose='sand energy';}
+  else if(/公园|湿地|广场|绿道|植物|风景|景点|文化/.test(combo)){purpose='walk energy';}
+  else {purpose='relax';}
+  if(/室内|商场|mall|购物中心|馆/.test(combo)) indoor=1;
+  const re=p.biz_ext||{};
+  const sub=(p.adname||'')+(p.address?' · '+p.address:'');
+  const k=catOf(combo), c=CAT[k];
+  const play=c.play;                                   // 按类型给真实游玩项目，而非"散步、亲子放松"
+  let sell=c.sell;                                     // 按类型给真实卖点
+  if(re.rating){ sell+='；高德评分 ★'+re.rating; if(re.cost) sell+=' / 人均¥'+re.cost; }
+  else { sell+='（评分暂未收录，点「查评分」看真实点评）'; }
+  sell+='，出发前请确认开放时间与票价';               // 不臆造"免费"等不实信息
+  const food=c.food;                                   // 按类型给真实吃饭/野餐建议
+  const time=/海洋|水族|动物园/.test(combo)?'半天':(/馆/.test(combo)?'2h':'半天');
+  return {id,name,isNew:true,sub,lat:w.lat,lng:w.lng,w:wW.trim(),t:tT,indoor,shade,purpose,play,sell,time,food,
+    rating:re.rating||undefined, cost:re.cost||undefined, business:re.business||undefined};
+}
+/* 合并：归一化同名聚合 → 校准种子 → 仅收真正带娃目的地（去重后追加） */
+function mergePOIs(pois){
+  // 1) 按归一化核心名聚合同一大场所的所有子 POI（如"沙滩公园-北门/南门/停车场"合并为一条）
+  const groups={};
+  pois.forEach(p=>{ if(!p.name||!p.location) return; const cn=normCore(p.name); if(!cn) return; (groups[cn]=groups[cn]||[]).push(p); });
+  let reps=Object.keys(groups).map(cn=>pickBest(groups[cn]));
+  // 2) 按评分降序，让优质推荐排前面
+  reps.sort((a,b)=>(Number((b.biz_ext&&b.biz_ext.rating)||0))-(Number((a.biz_ext&&a.biz_ext.rating)||0)));
+  // 3) 校准已有（种子）地点：写回真实坐标 + 评分/人均
+  let added=0,updated=0; const matched=new Set();
+  reps.forEach(p=>{
+    const w=gcj2wgs(...p.location.split(',').map(Number).reverse());
+    const ex=PLACES.find(pl=>!matched.has(pl.id) && samePlace(pl.name,p.name));
+    if(ex){
+      const cc=cleanName(p.name), ec=cleanName(ex.name);
+      // 候选是「父场所的子设施/分区」（如 华南虎馆、猛兽区）：只并入、绝不用来改父场所坐标/名称
+      if(isSubPOI(p) || (cc!==ec && cc.indexOf(ec)>=0)) return;
+      matched.add(ex.id); ex.lat=w.lat; ex.lng=w.lng;
+      if(p.address) ex.sub=(p.adname||'')+(p.address?' · '+p.address:'');
+      if(p.biz_ext&&p.biz_ext.rating){ex.rating=p.biz_ext.rating; ex.cost=p.biz_ext.cost;}
+      updated++; }
+  });
+  // 4) 新增：仅收真正带娃目的地（isGoodPOI + 评分/类型门禁），与已有同名的不重复加
+  let newId=(PLACES.length?Math.max.apply(null,PLACES.map(p=>p.id)):0)+1;
+  reps.forEach(p=>{
+    if(PLACES.some(pl=>samePlace(pl.name,p.name))) return;   // 已存在（种子或已加）
+    if(isSubPOI(p)) return;                                    // 华南虎馆/河马馆等动物园内子设施，不单列（并入所属大场所）
+    if(!addEligible(p)) return;                                // 宠物/医院/店铺/平庸POI 剔除
+    const w=gcj2wgs(...p.location.split(',').map(Number).reverse());
+    const np=inferFromPOI(p,w,newId++);
+    const cn=normCore(p.name);
+    if(knownNew.has(cn)) np.isNew=false; else { np.isNew=true; knownNew.add(cn); }   // 已见过的不重复打🌟
+    PLACES.push(np); added++;
+  });
+  if(added||updated){
+    buildMarkers(); renderTable(); apply();
+    const pc=document.getElementById('placeCount'); if(pc)pc.textContent=PLACES.length;
+  }
+  return {added,updated};
+}
+/* 每日 8:00 / 手动 触发：优先用高德实时检索生成当日清单；无 Key / 无结果时回退兜底种子。
+   生成后写入「今日快照」并追加到「历史推荐」（仅参考，不写死进推荐）。 */
+async function mergeLatestPlaces(){
+  const key=getAmapKey();
+  const fallback=()=>{ PLACES=SEED_PLACES.map(p=>({...p})); buildMarkers(); renderTable(); apply(); const pc=document.getElementById('placeCount'); if(pc)pc.textContent=PLACES.length; };
+  if(!key){ fallback(); setDS('未配置高德Key：暂用兜底清单（'+SEED_PLACES.length+' 个）；填 Key 或内置共享 Key 后，每日 8 点（或点「检索并更新」）将自动拉取实时推荐。'); return; }
+  setDS('正在从高德检索周边实时地点（福州 · '+minKm+'–'+maxKm+'km）…');
+  const kws=['公园','儿童公园','动物园','动物乐园','海洋馆','海洋世界','水族馆','游乐场','游乐园','主题公园','亲子','萌宠','植物园','森林公园','湿地','沙滩','海滨','广场','图书馆','少儿','科技馆','科普','温泉','景点','风景区'];
+  // 用"关键词文本搜索"：按相关度返回市内全量结果，再按距离区间过滤
+  const results=await Promise.all(kws.map(kw=>amapText(kw)));
+  const all=[]; const dup=new Set();
+  results.flat().forEach(p=>{ if(p&&p.name&&p.location){const k=p.name+p.location; if(!dup.has(k)){dup.add(k);all.push(p);} } });
+  if(all.length===0){ fallback(); setDS('高德未返回结果'+(lastAmapErr?('（'+lastAmapErr+'）'):'')+'，回退兜底清单'); saveSnapshot(); return; }
+  // 按距离区间过滤：只保留 [minKm,maxKm] 内的候选
+  const pois=all.filter(p=>{ const w=gcj2wgs(...p.location.split(',').map(Number).reverse()); const km=hav(w,{lat:start.lat,lng:start.lng}); return km>=minKm&&km<=maxKm; });
+  PLACES=[];                                          // 检索优先：当日起始清单由实时结果生成，不预置固定地点
+  const {added}=mergePOIs(pois);                       // mergePOIs 内部已建表+渲染+apply
+  buildMarkers(); renderTable(); apply();
+  const pc=document.getElementById('placeCount'); if(pc)pc.textContent=PLACES.length;
+  try{localStorage.setItem('fz_lastMerge',hotSeed());}catch(e){}
+  try{localStorage.setItem('fz_knownNew',JSON.stringify([...knownNew]));}catch(e){}
+  saveSnapshot();
+  setDS('高德实时检索完成：候选 '+pois.length+' 条 → 当日推荐 '+PLACES.length+' 个（其中🌟新发现 '+added+' 个）');
+}
+/* 写入「今日快照」+ 追加「历史推荐」（按日期去重，保留最近 7 天） */
+function saveSnapshot(){
+  try{
+    const snap={date:hotSeed(), places:PLACES.map(p=>({id:p.id,name:p.name,sub:p.sub,lat:p.lat,lng:p.lng,rating:p.rating,cost:p.cost,w:p.w,t:p.t,indoor:p.indoor,shade:p.shade,purpose:p.purpose,play:p.play,sell:p.sell,time:p.time,food:p.food,isNew:p.isNew}))};
+    localStorage.setItem('fz_today',JSON.stringify(snap));
+    let hist=[]; try{hist=JSON.parse(localStorage.getItem('fz_history')||'[]');}catch(e){}
+    if(!hist.some(h=>h.date===snap.date)){ hist.unshift({date:snap.date, names:snap.places.map(p=>p.name)}); hist=hist.slice(0,7); localStorage.setItem('fz_history',JSON.stringify(hist)); }
+    renderHistory();
+  }catch(e){}
+}
+/* 打开页面时优先恢复「今日快照」（同一天不重复检索，省配额）；无则触发检索 */
+function restoreToday(){
+  try{
+    const snap=JSON.parse(localStorage.getItem('fz_today')||'null');
+    if(snap&&snap.date===hotSeed()&&Array.isArray(snap.places)&&snap.places.length){
+      PLACES=snap.places.map(p=>({...p})); buildMarkers(); renderTable(); apply();
+      const pc=document.getElementById('placeCount'); if(pc)pc.textContent=PLACES.length;
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+/* 历史推荐（参考）渲染 */
+function renderHistory(){
+  const box=document.getElementById('historyBox'); if(!box)return;
+  let hist=[]; try{hist=JSON.parse(localStorage.getItem('fz_history')||'[]');}catch(e){}
+  if(!hist.length){ box.innerHTML='<span class="note">暂无历史记录（首次检索后生成）</span>'; return; }
+  box.innerHTML=hist.map(h=>'<div class="histent"><b>📅 '+h.date+'</b>：'+((h.names||[]).join('、')||'—')+'</div>').join('');
+}
+async function refreshAll(){
+  await mergeLatestPlaces();   // 检索最新地点 / 周边更新
+  autoFillAge();               // 年龄按出生日期自动更新
+  updateToday();               // 顶部日期刷新
+  applyAge();
+  renderTable();               // 重渲染清单（含距离/吃饭信息）
+  apply();                     // 重新筛选 + 热门重排
+}
+function scheduleDailyRefresh(){
+  const now=new Date(); const next=new Date(now); next.setHours(8,0,0,0);
+  if(next<=now) next.setDate(next.getDate()+1);
+  setTimeout(()=>{ hotDay=''; refreshAll(); scheduleDailyRefresh(); }, next-now);
+}
+
+/* ===== 起点定位 + 记忆起点 ===== */
+async function locate(text){
+  document.getElementById('startInfo').textContent='定位中…';
+  const key=getAmapKey();
+  if(key){
+    try{
+      const url='https://restapi.amap.com/v3/geocode/geo?key='+encodeURIComponent(key)+'&address='+encodeURIComponent(text)+'&city=福州';
+      const r=await fetch(url); const j=await r.json();
+      if(j.status==='1'&&j.geocodes&&j.geocodes[0]){
+        const [lng,lat]=j.geocodes[0].location.split(',').map(Number); // 高德返回 GCJ-02
+        const w=gcj2wgs(lat,lng); setStart(w.lat,w.lng,text); return;
+      }
+    }catch(e){}
+    document.getElementById('startInfo').textContent='高德Key解析失败，请检查Key，或用「🗺️点图选起点」';
+    return;
+  }
+  document.getElementById('startInfo').textContent='未填高德Key：请点「🗺️点图选起点」在地图上点选，或用「📡我的位置」';
+}
+function setStart(lat,lng,name,save=true){
+  start={lat,lng,name};
+  if(save && !savedStarts.some(s=>s.name===name && Math.abs(s.lat-lat)<0.001 && Math.abs(s.lng-lng)<0.001)){
+    savedStarts.push({lat,lng,name});
+    saveStarts();
+  }
+  const g=toMap(lat,lng);
+  startMarker.setLatLng(g).bindPopup('🏠 起点：'+name);
+  map.flyTo(g,12,{duration:.6});
+  document.getElementById('startInput').value=name;
+  document.getElementById('startInfo').textContent='已更新起点：'+name+'（表格距离已重算）';
+  renderSaved();
+  recomputeFit();          // 起点变了→距离变→适配度变
+  updateDistances(); apply(); saveState();
+}
+function renderSaved(){
+  const box=document.getElementById('savedStarts'); box.innerHTML='';
+  savedStarts.forEach((s,idx)=>{
+    const el=document.createElement('span'); el.className='chip saved'+(s.name===start.name?' cur':'');
+    el.innerHTML='<span class="sname">📍 '+s.name+'</span><span class="sdel" title="删除该起点">✕</span>';
+    el.querySelector('.sname').addEventListener('click',()=>setStart(s.lat,s.lng,s.name));
+    el.querySelector('.sdel').addEventListener('click',ev=>{ev.stopPropagation();savedStarts.splice(idx,1);saveStarts();renderSaved();
+      document.getElementById('startInfo').textContent='已删除记忆起点：'+s.name;});
+    box.appendChild(el);
+  });
+}
+document.getElementById('saveCur').addEventListener('click',()=>{
+  const name=document.getElementById('startInput').value.trim()||start.name;
+  setStart(start.lat,start.lng,name);
+  document.getElementById('startInfo').textContent='已保存当前起点到记忆列表：'+name;
+});
+document.getElementById('locateBtn').addEventListener('click',()=>{const v=document.getElementById('startInput').value.trim(); if(v) locate(v);});
+document.getElementById('startInput').addEventListener('keydown',e=>{if(e.key==='Enter'){const v=e.target.value.trim(); if(v) locate(v);}});
+document.getElementById('geoBtn').addEventListener('click',()=>{
+  if(!navigator.geolocation){document.getElementById('startInfo').textContent='当前浏览器不支持定位';return;}
+  document.getElementById('startInfo').textContent='获取定位中…（需授权，且页面需 https/localhost）';
+  navigator.geolocation.getCurrentPosition(pos=>setStart(pos.coords.latitude,pos.coords.longitude,'我的位置'),
+    ()=>document.getElementById('startInfo').textContent='定位被拒绝或不可用，请改用「🗺️点图选起点」',{enableHighAccuracy:true,timeout:8000});
+});
+document.getElementById('pickBtn').addEventListener('click',()=>{
+  pickMode=!pickMode;
+  document.getElementById('pickBtn').classList.toggle('on',pickMode);
+  document.getElementById('pickBtn').textContent=pickMode?'✅ 点地图选起点（开）':'🗺️ 点图选起点';
+  document.getElementById('startInfo').textContent=pickMode?'请在地图上点击设置起点':'';
+});
+map.on('click',e=>{
+  if(!pickMode) return;
+  const w=fromMap(e.latlng.lat,e.latlng.lng);
+  setStart(w.lat,w.lng,'点选位置('+e.latlng.lat.toFixed(3)+','+e.latlng.lng.toFixed(3)+')');
+  pickMode=false; document.getElementById('pickBtn').classList.remove('on'); document.getElementById('pickBtn').textContent='🗺️ 点图选起点';
+});
+
+/* ===== localStorage 记忆 ===== */
+function saveState(){
+  try{localStorage.setItem('fz_filters',JSON.stringify(sel));localStorage.setItem('fz_start',JSON.stringify(start));localStorage.setItem('fz_sort',sortMode);localStorage.setItem('fz_dist',JSON.stringify({min:minKm,max:maxKm}));}catch(e){}
+}
+function loadState(){
+  try{const s=JSON.parse(localStorage.getItem('fz_filters')); if(s)Object.assign(sel,s);}catch(e){}
+  try{const st=JSON.parse(localStorage.getItem('fz_start')); if(st&&st.lat)start=st;}catch(e){}
+  try{sortMode=localStorage.getItem('fz_sort')||'fit';}catch(e){}
+  try{const sa=JSON.parse(localStorage.getItem('fz_starts')); if(Array.isArray(sa)&&sa.length)savedStarts=sa;}catch(e){}
+  if(savedStarts.length===0) savedStarts=[{lat:start.lat,lng:start.lng,name:start.name}];
+  try{const d=JSON.parse(localStorage.getItem('fz_dist')); if(d&&typeof d.min==='number'&&typeof d.max==='number'){minKm=Math.max(0,Math.min(80,d.min));maxKm=Math.max(minKm,Math.min(80,d.max));}}catch(e){}
+  try{const kn=JSON.parse(localStorage.getItem('fz_knownNew')); if(Array.isArray(kn))knownNew=new Set(kn);}catch(e){}
+}
+function saveStarts(){try{localStorage.setItem('fz_starts',JSON.stringify(savedStarts));}catch(e){}}
+function saveAge(){try{localStorage.setItem('fz_age',JSON.stringify({y:document.getElementById('ageY').value,m:document.getElementById('ageM').value}));}catch(e){}}
+function loadAge(){try{const v=JSON.parse(localStorage.getItem('fz_age'));if(v){document.getElementById('ageY').value=v.y;document.getElementById('ageM').value=v.m;}}catch(e){}}
+
+/* ===== 筛选交互 ===== */
+document.querySelectorAll('.chips').forEach(g=>{
+  const key=g.dataset.key;
+  g.querySelectorAll('.chip').forEach(chip=>{
+    chip.addEventListener('click',()=>{
+      if(sel[key]===chip.dataset.v){sel[key]=null;chip.classList.remove('on');}
+      else{g.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));chip.classList.add('on');sel[key]=chip.dataset.v;}
+      apply(); saveState();
+    });
+  });
+});
+document.querySelectorAll('.clr').forEach(b=>b.addEventListener('click',()=>{
+  const key=b.dataset.key; sel[key]=null;
+  b.closest('.fgroup').querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+  apply(); saveState();
+}));
+document.getElementById('resetBtn').addEventListener('click',()=>{
+  Object.keys(sel).forEach(k=>sel[k]=null);
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+  apply(); saveState();
+});
+document.getElementById('amapKeyInput').addEventListener('change',e=>{
+  try{localStorage.setItem('amapKey',e.target.value.trim());}catch(err){}
+  document.getElementById('startInfo').textContent='高德Key已保存（本机），再次点「定位并更新」即可文字搜索';
+});
+/* 搜索距离区间：改动即按新区间重新检索（区间即检索窗口，也是清单显示窗口） */
+function applyDistInputs(){
+  let mn=Math.max(0,Math.min(80,parseInt(document.getElementById('minKmInput').value)||0));
+  let mx=Math.max(0,Math.min(80,parseInt(document.getElementById('maxKmInput').value)||80));
+  if(mn>mx){ [mn,mx]=[mx,mn]; }
+  minKm=mn; maxKm=mx;
+  document.getElementById('minKmInput').value=mn; document.getElementById('maxKmInput').value=mx;
+  saveState();
+  mergeLatestPlaces();   // 区间即检索窗口，改动后按新区间重新生成当日清单
+}
+document.getElementById('minKmInput').addEventListener('change',applyDistInputs);
+document.getElementById('maxKmInput').addEventListener('change',applyDistInputs);
+// 若把本 HTML 放到别处（如本地双击）想读云端服务，把下面改成云端 /api/today 完整地址
+const BACKEND_URL='';   // 留空=同源 /api/today；例：'http://1.2.3.4:8787/api/today'
+document.getElementById('mergeBtn').addEventListener('click', async ()=>{
+  setDS('正在刷新实时清单…');
+  try{ const r=await fetch(BACKEND_URL||'/api/refresh'); if(r.ok){ const d=await r.json(); if(d&&Array.isArray(d.pois)&&d.pois.length){ applyBackend(d); return; } } }catch(e){}
+  mergeLatestPlaces();   // 后端不可用（如 file:// 直接打开）→ 回退浏览器端检索
+});
+['ageY','ageM'].forEach(id=>document.getElementById(id).addEventListener('input',applyAge));
+
+/* ===== 后端优先：从常开后台读取当日清单（关掉网页也能每天自动刷新） ===== */
+async function loadBackendToday(){
+  const url=BACKEND_URL||'/api/today';
+  try{
+    const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),4000);
+    const r=await fetch(url,{signal:ctrl.signal}); clearTimeout(to);
+    if(!r.ok) return false;
+    const d=await r.json();
+    if(d&&d.date===hotSeed()&&Array.isArray(d.pois)&&d.pois.length){ applyBackend(d); return true; }
+  }catch(e){ /* file:// 直接打开或后端未起 → 回退本地 */ }
+  return false;
+}
+function applyBackend(snap){
+  const pois=snap.pois.filter(p=>{ if(!p.location) return false; const w=gcj2wgs(...p.location.split(',').map(Number).reverse()); const km=hav(w,{lat:start.lat,lng:start.lng}); return km>=minKm&&km<=maxKm; });
+  PLACES=[]; mergePOIs(pois);   // 复用前端分类/适龄评分/去重/子馆剔除等逻辑
+  setDS('🔗 后端实时清单（'+snap.date+' · '+(snap.count||pois.length)+' 个）已加载；每天 08:00 云端自动刷新');
+}
+
+/* ===== 初始化 ===== */
+loadState();
+autoFillAge();          // 年龄按出生日期自动填入
+applyAge();
+updateToday();          // 顶部日期
+document.querySelectorAll('.chips').forEach(g=>{const k=g.dataset.key; g.querySelectorAll('.chip').forEach(c=>{if(sel[k]===c.dataset.v)c.classList.add('on');});});
+document.getElementById('startInput').value=start.name;
+document.getElementById('amapKeyInput').value=(localStorage.getItem('amapKey')||'');
+document.getElementById('minKmInput').value=minKm;
+document.getElementById('maxKmInput').value=maxKm;
+document.getElementById('sortInd').textContent=sortMode==='asc'?'▲':sortMode==='desc'?'▼':'';
+startMarker.setLatLng(toMap(start.lat,start.lng));
+renderSaved();
+renderHistory();
+(async()=>{
+  if(EMBEDDED_SNAPSHOT && Array.isArray(EMBEDDED_SNAPSHOT) && EMBEDDED_SNAPSHOT.length){
+    PLACES=[]; mergePOIs(EMBEDDED_SNAPSHOT); buildMarkers(); renderTable(); apply();
+    const pc=document.getElementById('placeCount'); if(pc)pc.textContent=PLACES.length;
+    setDS('📦 已载入内嵌当日快照（'+EMBEDDED_SNAPSHOT.length+' 条原始 POI → '+PLACES.length+' 个推荐），由每日定时任务生成，免联网');
+  }
+  else if(await loadBackendToday()){ /* 后端成功：已加载当日清单并标注来源 */ }
+  else if(!restoreToday()){ mergeLatestPlaces(); }   // 无后端：优先恢复本地今日快照；无则触发浏览器端高德检索
+  else { setDS('今日推荐已恢复（'+hotSeed()+'），可点「🔄 检索并更新」刷新'); }
+  scheduleDailyRefresh();
+})();
+document.getElementById('footer').textContent='出行前请确认景点开放时间与天气 · 祝周末愉快 👶';
+</script>
+</body>
+</html>
