@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>福州带娃周末出行指南</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2f8f83">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="带娃指南">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
@@ -1977,6 +1983,14 @@ renderHistory();
   scheduleDailyRefresh();
 })();
 document.getElementById('footer').textContent='出行前请确认景点开放时间与天气 · 祝周末愉快 👶';
+</script>
+<script>
+/* PWA：注册 Service Worker，使页面可「安装到主屏幕」并支持离线打开 */
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('sw.js').catch(function(){ /* 不支持或离线时静默 */ });
+  });
+}
 </script>
 </body>
 </html>
