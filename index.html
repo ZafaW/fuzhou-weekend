@@ -1724,8 +1724,32 @@ function loadState(){
   try{sortMode=localStorage.getItem('fz_sort')||'fit';}catch(e){}
   try{const sa=JSON.parse(localStorage.getItem('fz_starts')); if(Array.isArray(sa)&&sa.length)savedStarts=sa;}catch(e){}
   if(savedStarts.length===0) savedStarts=[{lat:start.lat,lng:start.lng,name:start.name}];
+  migrateBadDefault();   // 修正历史版本遗留的错误默认坐标（旧「农林大学(默认)」偏南约600米）
   try{const d=JSON.parse(localStorage.getItem('fz_dist')); if(d&&typeof d.min==='number'&&typeof d.max==='number'){minKm=Math.max(0,Math.min(80,d.min));maxKm=Math.max(minKm,Math.min(80,d.max));}}catch(e){}
   try{const kn=JSON.parse(localStorage.getItem('fz_knownNew')); if(Array.isArray(kn))knownNew=new Set(kn);}catch(e){}
+}
+// 历史版本默认起点坐标错误（lat26.0766,lng119.2397，在金山寺附近）；检测到旧错误坐标的农林大学记忆
+// 就地替换为正确坐标，并异步从云端删除对应旧条目，避免刷新后又合并回来。
+function migrateBadDefault(){
+  const GOOD={lat:26.0872,lng:119.2329,name:'福建农林大学金山校区'};
+  const isBad=s=>s && /农林/.test(s.name||'') && Math.abs(s.lat-26.0766)<0.012 && Math.abs(s.lng-119.2397)<0.012;
+  let fixed=false;
+  if(isBad(start)){ start={lat:GOOD.lat,lng:GOOD.lng,name:GOOD.name}; fixed=true; }
+  for(let i=savedStarts.length-1;i>=0;i--){
+    const s=savedStarts[i];
+    if(isBad(s)){
+      if(!savedStarts.some(o=>o!==s && o.name===GOOD.name && Math.abs(o.lat-GOOD.lat)<0.001)) savedStarts[i]={lat:GOOD.lat,lng:GOOD.lng,name:GOOD.name};
+      else savedStarts.splice(i,1);
+      fixed=true;
+      try{
+        fetch('https://a422398a5c853b9a6.app.workbuddy.host/api/delete-origin?sharecode=AOKZ35Y2P7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:s.name,lat:+(s.lat||26.0766).toFixed(6),lng:+(s.lng||119.2397).toFixed(6)})}).catch(()=>{});
+      }catch(e){}
+    }
+  }
+  if(fixed){
+    try{localStorage.setItem('fz_start',JSON.stringify(start));localStorage.setItem('fz_starts',JSON.stringify(savedStarts));}catch(e){}
+    setTimeout(()=>{ try{ document.getElementById('startInput').value=start.name; }catch(e){} },0);
+  }
 }
 function saveStarts(){try{localStorage.setItem('fz_starts',JSON.stringify(savedStarts));}catch(e){} try{syncOrigins();}catch(e){}}
 function saveAge(){try{localStorage.setItem('fz_age',JSON.stringify({y:document.getElementById('ageY').value,m:document.getElementById('ageM').value}));}catch(e){}}
