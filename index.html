@@ -51,7 +51,48 @@
     .layout{flex-direction:column;padding:16px 12px 50px;gap:0;}
     .sidebar{display:none;}
     .tocfab{display:block;}
+    .pc-only{display:none !important;}
+    .mo-only{display:inline !important;}
+
+    /* ===== 手机端清单：表格 → 紧凑列表（一屏 6-7 个，点行原地展开） ===== */
+    #placeTable{display:none !important;}
+    .mlist{display:block !important;}
   }
+  .emo{font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Android Emoji",sans-serif;font-style:normal;font-weight:400;line-height:1;display:inline-block;vertical-align:-1px;}
+  /* ===== 手机端紧凑列表 ml（默认隐藏，仅 ≤880px 显示） ===== */
+  .mlist{display:none;}
+  .mo-only{display:none;}
+  .mi{border-bottom:1px solid var(--border);background:#fff;transition:background .15s;}
+  .mi:first-child{border-top:1px solid var(--border);}
+  .mi.dim{display:none;}
+  .mi-h{display:flex;align-items:center;gap:8px;padding:11px 4px;cursor:pointer;}
+  .mi-n{flex:1;min-width:0;font-size:.93rem;font-weight:600;color:#22302d;line-height:1.35;}
+  .mi-n .ni{font-size:.7rem;color:var(--accent);font-weight:600;margin-left:3px;}
+  .mi-r{font-size:.71rem;color:#b3762a;font-weight:600;margin-left:5px;}
+  .mi-d{flex:0 0 auto;font-size:.74rem;color:var(--primary);font-weight:600;white-space:nowrap;text-align:right;}
+  .mi-s{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:0 4px 10px;margin-top:-4px;}
+  .mi-f{font-size:.7rem;padding:1px 7px;border-radius:9px;font-weight:600;background:#e7f4f1;color:#2f8f83;}
+  .mi-f.ok{background:#eef5f3;color:#4d7a72;}
+  .mi-f.mid{background:#fff6e9;color:#b3762a;}
+  .mi-f.low,.mi-f.no{background:#fdeeee;color:#b35151;}
+  .mi-k{font-size:.71rem;padding:1px 7px;border-radius:9px;background:#f2f6f5;color:#5b726d;border:1px solid #e3ecea;}
+  .mi-arrow{font-size:.7rem;color:#a9bdb8;margin-left:auto;}
+  .mi.match{background:#f4fbf9;}
+  /* 展开区 */
+  .mi-x{display:none;padding:0 4px 12px;font-size:.82rem;}
+  .mi.open{background:#fbfefd;box-shadow:inset 3px 0 0 var(--primary);}
+  .mi.open .mi-x{display:block;}
+  .mi-x .xr{display:flex;gap:7px;margin-bottom:5px;line-height:1.5;}
+  .mi-x .xk{flex:0 0 50px;color:var(--muted);font-size:.78rem;}
+  .mi-x .xv{flex:1;min-width:0;color:#2b3a37;}
+  .mi-x .xr.hl .xv{color:#b3762a;}
+  .mi-x .xbtns{display:flex;gap:7px;margin-top:9px;}
+  .mi-x .xbtns button{flex:1;padding:9px 4px;border-radius:9px;font-size:.82rem;border:1px solid var(--primary);background:#fff;color:var(--primary);cursor:pointer;font-family:inherit;}
+  .mi-x .xbtns button.ghost{border-color:var(--border);color:var(--muted);}
+  .mi-x .xbtns button:active{background:var(--primary);color:#fff;}
+  /* 展开全部 */
+  .morebtn{display:block;width:100%;margin-top:12px;padding:11px;border:1px dashed var(--primary);border-radius:10px;background:#f7fcfb;color:var(--primary);font-size:.86rem;font-weight:600;cursor:pointer;font-family:inherit;}
+  .morebtn:active{background:#e7f4f1;}
   header.hero{background:linear-gradient(135deg,var(--primary),#3aa897);color:#fff;border-radius:18px;padding:28px 26px;margin-bottom:22px;box-shadow:0 6px 20px rgba(47,143,131,.25);}
   header.hero h1{margin:0 0 6px;font-size:1.55rem;}
   header.hero p{margin:0;opacity:.95;font-size:.95rem;}
@@ -336,6 +377,9 @@
       <thead><tr><th>#</th><th>地点</th><th id="sortTh">距起点 <span id="sortInd"></span></th><th>游玩项目</th><th>卖点（适合这个月龄）</th><th>🍴 吃饭/野餐</th><th>出行时间</th><th id="fitTh">🍼适配 <span id="fitInd">▼</span></th><th>🧭 导航</th></tr></thead>
       <tbody id="placeBody"></tbody>
     </table>
+    <!-- 手机端紧凑列表（≤880px 时替代表格显示） -->
+    <div class="mlist" id="mList"></div>
+    <button class="morebtn" id="mMore" onclick="toggleMoreList()" style="display:none;"></button>
     <div class="callout">📌 <b>一句话选景：</b>懒得跑→乌龙江湿地 / 沙滩公园 / 闽江公园；想凉快不晒→欧乐堡 / 少儿图书馆 / 商场；想放电→儿童公园 / 飞凤山；想看真海→平潭 / 奇达村；夏天避暑→鼓岭。</div>
     <div class="callout">🍴 <b>吃饭/野餐速览：</b>商场综合体（仓山万达/爱琴海、东街口、台江万达、泰禾）母婴室+儿童餐+空调最省心；户外公园（乌龙江湿地/沙滩公园/花海/飞凤山/梁厝）草坪适合自带野餐垫；闽菜偏咸辣，可单点清淡面线糊、锅边糊、蒸蛋；避开 12:00-13:00 高峰更从容。</div>
   </section>
@@ -611,6 +655,7 @@ function updateDistances(){
     markers[p.id].bindPopup(popupHTML(p));
   });
   applySort();
+  renderMList();     // 排序/距离变化后，手机端列表同步重建（顺序与表格一致）
 }
 /* 仅在地图上飞 + 弹窗（不滚动表格） */
 function focusOnMap(id){
@@ -646,6 +691,143 @@ document.getElementById('fitTh').addEventListener('click',()=>{
   sortMode=sortMode==='fit'?'none':'fit';
   applySort(); saveState();
 });
+
+/* ===== 手机端紧凑列表（≤880px）：一行一个地点，点行原地展开 ===== */
+/* 折叠条数：默认 8 条（手机一屏能看到 8~9 条紧凑卡片），窄屏自动收到 6 条 */
+const MFOLD_LIMIT = (typeof innerWidth==='number' && innerWidth<375) ? 6 : 8;
+let mExpanded=false;                 // 是否已展开全部
+let mOpenId=null;                    // 当前展开详情的地点 id
+
+/* 从「游玩项目 + 卖点」里提炼 2 个最有区分度的短关键词
+   优先级：特色玩法（沙/水/动物/游乐/科普…）> 场所特征（免费/树荫/推车/室内）> 兜底取项目名 */
+function miKeys(p){
+  const src=String(p.play||'')+'|'+String(p.sell||'');
+  const RULES=[
+    [/沙池|玩沙|沙滩|挖沙/,'玩沙'],
+    [/戏水|踏浪|玩水|浅水|水世界/,'玩水'],
+    [/动物|萌宠|喂|投喂/,'看动物'],
+    [/海洋|水族|展缸|人鱼/,'海洋馆'],
+    [/滑梯|攀爬|游乐|旋转|小火车|蹦床/,'放电'],
+    [/绘本|阅读|图书|借阅/,'绘本阅读'],
+    [/科普|科技|展项|互动展/,'科普'],
+    [/游船|划船|脚踏船/,'坐船'],
+    [/骑行|单车|绿道/,'骑车'],
+    [/温泉/,'温泉'],
+    [/古厝|古街|历史|文化|寺|塔/,'人文'],
+    [/船|帆|湖上/,'坐船'],
+    [/登[山高]|爬山|山景|山顶/,'登山'],
+    [/草坪|野餐|搭帐篷/,'草坪野餐'],
+    [/步道|栈道|林荫/,'步道'],
+    [/免费|不要票|不收门票/,'免费'],
+    [/树荫|遮阴|凉快/,'树荫多'],
+    [/推车|平坦/,'好推车'],
+    [/室内|空调/,'室内凉快']
+  ];
+  const out=[];
+  for(const [re,name] of RULES){
+    if(re.test(src) && !out.includes(name)) out.push(name);
+    if(out.length>=2) break;
+  }
+  // 兜底：从「卖点」→「游玩项目」取第一个短片段
+  if(!out.length){
+    const segs=(String(p.sell||'')||String(p.play||'')).split(/[、，,；;]/).map(s=>s.trim()).filter(Boolean);
+    for(let s of segs){
+      s=s.replace(/[（(][^()（）]*[)）]/g,'');
+      if(s.length>5) s=s.slice(0,5);
+      if(s){ out.push(s); break; }
+    }
+  }
+  return out;
+}
+function fitCls(s){ return s>=80?'':s>=60?'ok':s>=40?'mid':s>=20?'low':'no'; }
+
+function renderMList(){
+  const wrap=document.getElementById('mList'); if(!wrap) return;
+  wrap.innerHTML='';
+  PLACES.forEach(p=>{
+    const e=est(p), s=(p.fit==null?0:p.fit);
+    const div=document.createElement('div');
+    div.className='mi'; div.dataset.id=p.id;
+    const keys=miKeys(p);
+    div.innerHTML=
+      `<div class="mi-h"><span class="mi-n">${p.name}${p.isNew?'<span class="ni">新</span>':''}${p.rating?`<span class="mi-r"><i class="emo">⭐</i>${p.rating}</span>`:''}</span>`+
+      `<span class="mi-d"><i class="emo">🧭</i> ${e.km} km<br><i class="emo">🕐</i> ${e.min} min</span></div>`+
+      `<div class="mi-s"><span class="mi-f ${fitCls(s)}"><i class="emo">🍼</i> ${s} ${p.fitLabel||''}</span>`+
+      keys.map(k=>`<span class="mi-k">${k}</span>`).join('')+
+      `<span class="mi-arrow">▾</span></div>`+
+      `<div class="mi-x"></div>`;
+    div.querySelector('.mi-h').addEventListener('click',ev=>{ ev.stopPropagation(); toggleMi(p.id); });
+    div.querySelector('.mi-s').addEventListener('click',ev=>{ ev.stopPropagation(); toggleMi(p.id); });
+    wrap.appendChild(div);
+  });
+  paintMiOpen();
+  applyMoreLimit();
+}
+/* 展开/收起某条，并把详情区内容填进去 */
+function toggleMi(id){
+  mOpenId = (mOpenId===id) ? null : id;
+  paintMiOpen();
+  if(mOpenId!=null){
+    const div=document.querySelector(`.mi[data-id="${mOpenId}"]`);
+    if(div && !div.querySelector('.mi-x').innerHTML) div.querySelector('.mi-x').innerHTML=miDetailHTML(mOpenId);
+    if(div) setTimeout(()=>div.scrollIntoView({behavior:'smooth',block:'nearest'}),80);
+  }
+}
+function paintMiOpen(){
+  document.querySelectorAll('.mi').forEach(d=>{
+    const on=Number(d.dataset.id)===mOpenId;
+    d.classList.toggle('open',on);
+    const a=d.querySelector('.mi-arrow'); if(a) a.textContent=on?'▴':'▾';
+  });
+}
+/* 展开后的详情内容（吃饭 / 看点 / 注意事项摘要 + 按钮） */
+function miDetailHTML(id){
+  const p=PLACES.find(x=>x.id===id); if(!p) return '';
+  const sn=(typeof spotNote==='function')?spotNote(p.name):null;
+  const months=getAgeMonths();
+  let html='';
+  html+=`<div class="xr"><span class="xk">玩什么</span><span class="xv">${p.play||'—'}</span></div>`;
+  html+=`<div class="xr"><span class="xk">吃饭</span><span class="xv">${p.food||'—'}</span></div>`;
+  html+=`<div class="xr"><span class="xk">时间</span><span class="xv">${p.time||'半天'}｜${p.indoor==1?'室内':'户外'}${p.shade==1?'· 有树荫':''}</span></div>`;
+  if(sn&&sn.u) html+=`<div class="xr"><span class="xk">看点</span><span class="xv">${sn.u}</span></div>`;
+  if(sn&&sn.warn) html+=`<div class="xr hl"><span class="xk">雷点</span><span class="xv">${sn.warn}</span></div>`;
+  html+=`<div class="xr"><span class="xk">适配</span><span class="xv">🍼 ${p.fit==null?0:p.fit} ${p.fitLabel||''}${p.fitReason?('：'+p.fitReason):''}</span></div>`;
+  // 适龄提示（与详情弹层一致的精简版）
+  const cat=catOf((p.name||'')+(p.sub||''));
+  if(CAT_TIP[cat]) html+=`<div class="xr"><span class="xk">建议</span><span class="xv">${CAT_TIP[cat]}</span></div>`;
+  html+=`<div class="xbtns">`+
+    `<button onclick="event.stopPropagation();amapNav(${p.id})"><i class="emo">🧭</i> 导航</button>`+
+    `<button class="ghost" onclick="event.stopPropagation();openGuide(${p.id})"><i class="emo">📄</i> 完整攻略</button>`+
+    `<button class="ghost" onclick="event.stopPropagation();locateOnMap(${p.id})"><i class="emo">🗺️</i> 地图</button>`+
+    `</div>`;
+  return html;
+}
+/* 地图定位（先滚到地图再飞，手机上弹窗才看得见） */
+window.locateOnMap=function(id){
+  const sec=document.getElementById('mapSec');
+  if(sec) sec.scrollIntoView({behavior:'smooth',block:'start'});
+  setTimeout(()=>focusOnMap(id),420);
+};
+/* 「只看前 8 条 / 展开全部」——按当前筛选后仍可见的条目计数 */
+function applyMoreLimit(){
+  const btn=document.getElementById('mMore'); if(!btn) return;
+  // 只统计「当前筛选后仍可见」的条目：筛选变化时折叠与文案都要跟着变。
+  // 注意筛选是用 .dim 类隐藏的（不是内联 display），所以必须按类名判断，不能看 style。
+  const items=[...document.querySelectorAll('.mi')].filter(d=>!d.classList.contains('dim'));
+  let shown=0;
+  items.forEach(d=>{
+    const over = !mExpanded && shown>=MFOLD_LIMIT;
+    d.style.display = over ? 'none' : '';
+    if(!over) shown++;
+  });
+  // 命中条目不足一屏时，先把展开态复位，避免下次进来还残留「收起」
+  if(items.length<=MFOLD_LIMIT) mExpanded=false;
+  const hidden = items.length - shown;
+  if(hidden>0){ btn.textContent='展开全部 '+items.length+' 个 ▼（还有 '+hidden+' 个）'; btn.style.display='block'; }
+  else if(mExpanded && items.length>MFOLD_LIMIT){ btn.textContent='收起，只看前 '+MFOLD_LIMIT+' 个 ▲'; btn.style.display='block'; }
+  else { btn.textContent='展开全部 ▼'; btn.style.display='none'; }
+}
+window.toggleMoreList=function(){ mExpanded=!mExpanded; applyMoreLimit(); };
 
 /* ===== 筛选 ===== */
 /* 单条件匹配判断；skipKey=模拟"去掉该项筛选"（用于智能放宽） */
@@ -698,6 +880,8 @@ function apply(){
   updateChipCounts();
   renderHot();
   renderQuick();
+  markNewBadges();        // 「新」标统一在此判定（apply 是所有数据分支加载完后的必经收口）
+  applyMoreLimit();       // 手机端：筛选后重新计算折叠条数（必须在 markNewBadges 之后，否则会被重渲染覆盖）
 }
 /* 智能筛选：每个选项实时显示"今天清单里单独命中该条件"的地点数；0 命中自动置灰禁选 */
 function updateChipCounts(){
@@ -739,6 +923,43 @@ function renderQuick(){
 /* ===== 每日热门（每日 8:00 刷新） ===== */
 let hotDay='';
 function hotSeed(){const n=new Date();return n.getFullYear()+'-'+(n.getMonth()+1)+'-'+n.getDate();}
+/* 首次发现日期是否在 7 天内（决定是否打「新」标） */
+function isFresh(ymd){
+  if(!ymd) return false;
+  const t=Date.parse(String(ymd).replace(/-/g,'/'));
+  if(isNaN(t)) return false;
+  return (Date.now()-t) <= 7*24*3600*1000;
+}
+/* 统一刷新「新」标：只认「新增时记录下来的首次发现日期」，且需在 7 天内。
+   历史无记录的地点视为老地点，不打「新」（避免整批补全后满屏都是「新」）。 */
+function refreshNewFlags(){
+  let seen={}; try{ seen=JSON.parse(localStorage.getItem('fz_seen')||'{}'); }catch(e){}
+  let dirty=false;
+  PLACES.forEach(p=>{
+    const cn=normCore(p.name);
+    if(!seen[cn]){ seen[cn]=hotSeed(); dirty=true; }   // 首次见到 → 记为今天（7 天后自动不再算新）
+    p.isNew = isFresh(seen[cn]);
+  });
+  if(dirty){ try{ localStorage.setItem('fz_seen',JSON.stringify(seen)); }catch(e){} }
+}
+/* 「新」标的落地：判定 + 把标记画到表格与手机卡片上。
+   注意：必须由 apply() 末尾调用——apply 是内嵌快照/后端/本地快照/高德实时检索
+   四条数据分支加载完成后的必经收口，放在这里才能保证 PLACES 已有数据。
+   同时数据里若已无新地点，要主动把旧的「🌟新」擦掉，避免残留。 */
+let _newSig='';
+function markNewBadges(){
+  if(!PLACES.length) return;
+  refreshNewFlags();
+  if(document.body) document.body.dataset.newsig = PLACES.filter(p=>p.isNew).length + '/' + PLACES.length;
+  const sig = PLACES.map(p=>p.id+(p.isNew?'1':'0')).join(',');
+  if(sig===_newSig) return;      // 内容没变就不重绘，避免滚动位置/展开状态被重置
+  _newSig=sig;
+  PLACES.forEach(p=>{
+    const tr=body.querySelector(`tr[data-id="${p.id}"] .place`);
+    if(tr) tr.innerHTML=`${p.name}${p.isNew?' <span class="note">🌟新</span>':''}<br><span class="note">${p.sub}</span>`;
+  });
+  if(document.querySelectorAll('.mi').length) renderMList();
+}
 function renderHot(){
   const now=new Date(); const dow=now.getDay(); const weekend=(dow===0||dow===6);
   // 以"天"为种子做轮换：每天只变一次（用当天日期做偏移，保证每日稳定但不写死 ID）
