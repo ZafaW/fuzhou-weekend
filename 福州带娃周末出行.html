@@ -51,7 +51,49 @@
     .layout{flex-direction:column;padding:16px 12px 50px;gap:0;}
     .sidebar{display:none;}
     .tocfab{display:block;}
+    .pc-only{display:none !important;}
+    .mo-only{display:inline !important;}
+
+    /* ===== 手机端清单：表格 → 紧凑列表（一屏 6-7 个，点行原地展开） ===== */
+    #placeTable{display:none !important;}
+    .mlist{display:block !important;}
   }
+
+  .emo{font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Android Emoji",sans-serif;font-style:normal;font-weight:400;line-height:1;display:inline-block;vertical-align:-1px;}
+  /* ===== 手机端紧凑列表 ml（默认隐藏，仅 ≤880px 显示） ===== */
+  .mlist{display:none;}
+  .mo-only{display:none;}
+  .mi{border-bottom:1px solid var(--border);background:#fff;transition:background .15s;}
+  .mi:first-child{border-top:1px solid var(--border);}
+  .mi.dim{display:none;}
+  .mi-h{display:flex;align-items:center;gap:8px;padding:11px 4px;cursor:pointer;}
+  .mi-n{flex:1;min-width:0;font-size:.93rem;font-weight:600;color:#22302d;line-height:1.35;}
+  .mi-n .ni{font-size:.7rem;color:var(--accent);font-weight:600;margin-left:3px;}
+  .mi-r{font-size:.71rem;color:#b3762a;font-weight:600;margin-left:5px;}
+  .mi-d{flex:0 0 auto;font-size:.74rem;color:var(--primary);font-weight:600;white-space:nowrap;text-align:right;}
+  .mi-s{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:0 4px 10px;margin-top:-4px;}
+  .mi-f{font-size:.7rem;padding:1px 7px;border-radius:9px;font-weight:600;background:#e7f4f1;color:#2f8f83;}
+  .mi-f.ok{background:#eef5f3;color:#4d7a72;}
+  .mi-f.mid{background:#fff6e9;color:#b3762a;}
+  .mi-f.low,.mi-f.no{background:#fdeeee;color:#b35151;}
+  .mi-k{font-size:.71rem;padding:1px 7px;border-radius:9px;background:#f2f6f5;color:#5b726d;border:1px solid #e3ecea;}
+  .mi-arrow{font-size:.7rem;color:#a9bdb8;margin-left:auto;}
+  .mi.match{background:#f4fbf9;}
+  /* 展开区 */
+  .mi-x{display:none;padding:0 4px 12px;font-size:.82rem;}
+  .mi.open{background:#fbfefd;box-shadow:inset 3px 0 0 var(--primary);}
+  .mi.open .mi-x{display:block;}
+  .mi-x .xr{display:flex;gap:7px;margin-bottom:5px;line-height:1.5;}
+  .mi-x .xk{flex:0 0 50px;color:var(--muted);font-size:.78rem;}
+  .mi-x .xv{flex:1;min-width:0;color:#2b3a37;}
+  .mi-x .xr.hl .xv{color:#b3762a;}
+  .mi-x .xbtns{display:flex;gap:7px;margin-top:9px;}
+  .mi-x .xbtns button{flex:1;padding:9px 4px;border-radius:9px;font-size:.82rem;border:1px solid var(--primary);background:#fff;color:var(--primary);cursor:pointer;font-family:inherit;}
+  .mi-x .xbtns button.ghost{border-color:var(--border);color:var(--muted);}
+  .mi-x .xbtns button:active{background:var(--primary);color:#fff;}
+  /* 展开全部 */
+  .morebtn{display:block;width:100%;margin-top:12px;padding:11px;border:1px dashed var(--primary);border-radius:10px;background:#f7fcfb;color:var(--primary);font-size:.86rem;font-weight:600;cursor:pointer;font-family:inherit;}
+  .morebtn:active{background:#e7f4f1;}
   header.hero{background:linear-gradient(135deg,var(--primary),#3aa897);color:#fff;border-radius:18px;padding:28px 26px;margin-bottom:22px;box-shadow:0 6px 20px rgba(47,143,131,.25);}
   header.hero h1{margin:0 0 6px;font-size:1.55rem;}
   header.hero p{margin:0;opacity:.95;font-size:.95rem;}
@@ -327,7 +369,7 @@
   <!-- 推荐清单 -->
   <section id="sec-list">
     <h2>一、周末出行推荐清单（共 <span id="placeCount">22</span> 个）</h2>
-    <div class="note" style="margin-bottom:12px;">"距起点"随上方起点实时更新；默认按「🍼适配」排序；点「距起点 / 🍼适配」表头可切换排序；高亮行 = 当前筛选匹配；点任意行可在地图定位并弹详情。</div>
+    <div class="note" style="margin-bottom:12px;"><span class="pc-only">"距起点"随上方起点实时更新；默认按「🍼适配」排序；点「距起点 / 🍼适配」表头可切换排序；高亮行 = 当前筛选匹配；点任意行可在地图定位并弹详情。</span><span class="mo-only">手机上每个地点占一行，先看「名字 + 🍼适配 + 距离 + 关键词」快速筛；<b>点一下某行原地展开</b>吃饭/看点/雷点与按钮。默认显示前 8 个，底部可展开全部。</span></div>
     <div style="margin-bottom:10px;"><input id="tableSearch" class="tsearch" type="text" placeholder="🔍 搜索地点 / 地址 / 项目（如：沙滩、滑梯、室内、动物园）"></div>
     <table id="placeTable">
       <colgroup>
@@ -336,6 +378,9 @@
       <thead><tr><th>#</th><th>地点</th><th id="sortTh">距起点 <span id="sortInd"></span></th><th>游玩项目</th><th>卖点（适合这个月龄）</th><th>🍴 吃饭/野餐</th><th>出行时间</th><th id="fitTh">🍼适配 <span id="fitInd">▼</span></th><th>🧭 导航</th></tr></thead>
       <tbody id="placeBody"></tbody>
     </table>
+    <!-- 手机端紧凑列表（≤880px 时替代表格显示） -->
+    <div class="mlist" id="mList"></div>
+    <button class="morebtn" id="mMore" onclick="toggleMoreList()" style="display:none;"></button>
     <div class="callout">📌 <b>一句话选景：</b>懒得跑→乌龙江湿地 / 沙滩公园 / 闽江公园；想凉快不晒→欧乐堡 / 少儿图书馆 / 商场；想放电→儿童公园 / 飞凤山；想看真海→平潭 / 奇达村；夏天避暑→鼓岭。</div>
     <div class="callout">🍴 <b>吃饭/野餐速览：</b>商场综合体（仓山万达/爱琴海、东街口、台江万达、泰禾）母婴室+儿童餐+空调最省心；户外公园（乌龙江湿地/沙滩公园/花海/飞凤山/梁厝）草坪适合自带野餐垫；闽菜偏咸辣，可单点清淡面线糊、锅边糊、蒸蛋；避开 12:00-13:00 高峰更从容。</div>
   </section>
@@ -601,7 +646,7 @@ function renderTable(){
     tr.addEventListener('click',()=>focusOnMap(p.id));
     body.appendChild(tr);
   });
-  updateDistances();
+  updateDistances();      // 内部会调用 applySort → 顺带刷新手机端列表
 }
 function updateDistances(){
   PLACES.forEach(p=>{
@@ -611,6 +656,7 @@ function updateDistances(){
     markers[p.id].bindPopup(popupHTML(p));
   });
   applySort();
+  renderMList();          // 表格排序完成后重绘手机端列表（保证顺序一致、数据完整）
 }
 /* 仅在地图上飞 + 弹窗（不滚动表格） */
 function focusOnMap(id){
@@ -634,6 +680,9 @@ function applySort(){
   else if(sortMode==='desc') arr.sort((x,y)=>y.min-x.min);
   else arr.sort((x,y)=> (y.fit-x.fit) || (y.rating-x.rating) || (x.min-y.min));   // 默认按适龄适配度
   arr.forEach(o=>body.appendChild(body.querySelector(`tr[data-id="${o.id}"]`)));
+  // 手机端列表同步排序：按同一顺序重排节点
+  const ml=document.getElementById('mList');
+  if(ml) arr.forEach(o=>{ const d=ml.querySelector(`.mi[data-id="${o.id}"]`); if(d) ml.appendChild(d); });
   document.getElementById('sortInd').textContent=sortMode==='asc'?'▲':sortMode==='desc'?'▼':'';
   document.getElementById('fitInd').textContent=sortMode==='asc'||sortMode==='desc'?'':(sortMode==='fit'?'▼':'▼');
 }
@@ -646,6 +695,143 @@ document.getElementById('fitTh').addEventListener('click',()=>{
   sortMode=sortMode==='fit'?'none':'fit';
   applySort(); saveState();
 });
+
+/* ===== 手机端紧凑列表（≤880px）：一行一个地点，点行原地展开 ===== */
+/* 折叠条数：默认 8 条（手机一屏能看到 8~9 条紧凑卡片），窄屏自动收到 6 条 */
+const MFOLD_LIMIT = (typeof innerWidth==='number' && innerWidth<375) ? 6 : 8;
+let mExpanded=false;                 // 是否已展开全部
+let mOpenId=null;                    // 当前展开详情的地点 id
+
+/* 从「游玩项目 + 卖点」里提炼 2 个最有区分度的短关键词
+   优先级：特色玩法（沙/水/动物/游乐/科普…）> 场所特征（免费/树荫/推车/室内）> 兜底取项目名 */
+function miKeys(p){
+  const src=String(p.play||'')+'|'+String(p.sell||'');
+  const RULES=[
+    [/沙池|玩沙|沙滩|挖沙/,'玩沙'],
+    [/戏水|踏浪|玩水|浅水|水世界/,'玩水'],
+    [/动物|萌宠|喂|投喂/,'看动物'],
+    [/海洋|水族|展缸|人鱼/,'海洋馆'],
+    [/滑梯|攀爬|游乐|旋转|小火车|蹦床/,'放电'],
+    [/绘本|阅读|图书|借阅/,'绘本阅读'],
+    [/科普|科技|展项|互动展/,'科普'],
+    [/游船|划船|脚踏船/,'坐船'],
+    [/骑行|单车|绿道/,'骑车'],
+    [/温泉/,'温泉'],
+    [/古厝|古街|历史|文化|寺|塔/,'人文'],
+    [/船|帆|湖上/,'坐船'],
+    [/登[山高]|爬山|山景|山顶/,'登山'],
+    [/草坪|野餐|搭帐篷/,'草坪野餐'],
+    [/步道|栈道|林荫/,'步道'],
+    [/免费|不要票|不收门票/,'免费'],
+    [/树荫|遮阴|凉快/,'树荫多'],
+    [/推车|平坦/,'好推车'],
+    [/室内|空调/,'室内凉快']
+  ];
+  const out=[];
+  for(const [re,name] of RULES){
+    if(re.test(src) && !out.includes(name)) out.push(name);
+    if(out.length>=2) break;
+  }
+  // 兜底：从「卖点」→「游玩项目」取第一个短片段
+  if(!out.length){
+    const segs=(String(p.sell||'')||String(p.play||'')).split(/[、，,；;]/).map(s=>s.trim()).filter(Boolean);
+    for(let s of segs){
+      s=s.replace(/[（(][^()（）]*[)）]/g,'');
+      if(s.length>5) s=s.slice(0,5);
+      if(s){ out.push(s); break; }
+    }
+  }
+  return out;
+}
+function fitCls(s){ return s>=80?'':s>=60?'ok':s>=40?'mid':s>=20?'low':'no'; }
+
+function renderMList(){
+  const wrap=document.getElementById('mList'); if(!wrap) return;
+  wrap.innerHTML='';
+  PLACES.forEach(p=>{
+    const e=est(p), s=(p.fit==null?0:p.fit);
+    const div=document.createElement('div');
+    div.className='mi'; div.dataset.id=p.id;
+    const keys=miKeys(p);
+    div.innerHTML=
+      `<div class="mi-h"><span class="mi-n">${p.name}${p.isNew?'<span class="ni">新</span>':''}${p.rating?`<span class="mi-r"><i class="emo">⭐</i>${p.rating}</span>`:''}</span>`+
+      `<span class="mi-d"><i class="emo">🧭</i> ${e.km} km<br><i class="emo">🕐</i> ${e.min} min</span></div>`+
+      `<div class="mi-s"><span class="mi-f ${fitCls(s)}"><i class="emo">🍼</i> ${s} ${p.fitLabel||''}</span>`+
+      keys.map(k=>`<span class="mi-k">${k}</span>`).join('')+
+      `<span class="mi-arrow">▾</span></div>`+
+      `<div class="mi-x"></div>`;
+    div.querySelector('.mi-h').addEventListener('click',ev=>{ ev.stopPropagation(); toggleMi(p.id); });
+    div.querySelector('.mi-s').addEventListener('click',ev=>{ ev.stopPropagation(); toggleMi(p.id); });
+    wrap.appendChild(div);
+  });
+  paintMiOpen();
+  applyMoreLimit();
+}
+/* 展开/收起某条，并把详情区内容填进去 */
+function toggleMi(id){
+  mOpenId = (mOpenId===id) ? null : id;
+  paintMiOpen();
+  if(mOpenId!=null){
+    const div=document.querySelector(`.mi[data-id="${mOpenId}"]`);
+    if(div && !div.querySelector('.mi-x').innerHTML) div.querySelector('.mi-x').innerHTML=miDetailHTML(mOpenId);
+    if(div) setTimeout(()=>div.scrollIntoView({behavior:'smooth',block:'nearest'}),80);
+  }
+}
+function paintMiOpen(){
+  document.querySelectorAll('.mi').forEach(d=>{
+    const on=Number(d.dataset.id)===mOpenId;
+    d.classList.toggle('open',on);
+    const a=d.querySelector('.mi-arrow'); if(a) a.textContent=on?'▴':'▾';
+  });
+}
+/* 展开后的详情内容（吃饭 / 看点 / 注意事项摘要 + 按钮） */
+function miDetailHTML(id){
+  const p=PLACES.find(x=>x.id===id); if(!p) return '';
+  const sn=(typeof spotNote==='function')?spotNote(p.name):null;
+  const months=getAgeMonths();
+  let html='';
+  html+=`<div class="xr"><span class="xk">玩什么</span><span class="xv">${p.play||'—'}</span></div>`;
+  html+=`<div class="xr"><span class="xk">吃饭</span><span class="xv">${p.food||'—'}</span></div>`;
+  html+=`<div class="xr"><span class="xk">时间</span><span class="xv">${p.time||'半天'}｜${p.indoor==1?'室内':'户外'}${p.shade==1?'· 有树荫':''}</span></div>`;
+  if(sn&&sn.u) html+=`<div class="xr"><span class="xk">看点</span><span class="xv">${sn.u}</span></div>`;
+  if(sn&&sn.warn) html+=`<div class="xr hl"><span class="xk">雷点</span><span class="xv">${sn.warn}</span></div>`;
+  html+=`<div class="xr"><span class="xk">适配</span><span class="xv">🍼 ${p.fit==null?0:p.fit} ${p.fitLabel||''}${p.fitReason?('：'+p.fitReason):''}</span></div>`;
+  // 适龄提示（与详情弹层一致的精简版）
+  const cat=catOf((p.name||'')+(p.sub||''));
+  if(CAT_TIP[cat]) html+=`<div class="xr"><span class="xk">建议</span><span class="xv">${CAT_TIP[cat]}</span></div>`;
+  html+=`<div class="xbtns">`+
+    `<button onclick="event.stopPropagation();amapNav(${p.id})"><i class="emo">🧭</i> 导航</button>`+
+    `<button class="ghost" onclick="event.stopPropagation();openGuide(${p.id})"><i class="emo">📄</i> 完整攻略</button>`+
+    `<button class="ghost" onclick="event.stopPropagation();locateOnMap(${p.id})"><i class="emo">🗺️</i> 地图</button>`+
+    `</div>`;
+  return html;
+}
+/* 地图定位（先滚到地图再飞，手机上弹窗才看得见） */
+window.locateOnMap=function(id){
+  const sec=document.getElementById('mapSec');
+  if(sec) sec.scrollIntoView({behavior:'smooth',block:'start'});
+  setTimeout(()=>focusOnMap(id),420);
+};
+/* 「只看前 8 条 / 展开全部」——按当前筛选后仍可见的条目计数 */
+function applyMoreLimit(){
+  const btn=document.getElementById('mMore'); if(!btn) return;
+  // 只统计「当前筛选后仍可见」的条目：筛选变化时折叠与文案都要跟着变。
+  // 注意筛选是用 .dim 类隐藏的（不是内联 display），所以必须按类名判断，不能看 style。
+  const items=[...document.querySelectorAll('.mi')].filter(d=>!d.classList.contains('dim'));
+  let shown=0;
+  items.forEach(d=>{
+    const over = !mExpanded && shown>=MFOLD_LIMIT;
+    d.style.display = over ? 'none' : '';
+    if(!over) shown++;
+  });
+  // 命中条目不足一屏时，先把展开态复位，避免下次进来还残留「收起」
+  if(items.length<=MFOLD_LIMIT) mExpanded=false;
+  const hidden = items.length - shown;
+  if(hidden>0){ btn.textContent='展开全部 '+items.length+' 个 ▼（还有 '+hidden+' 个）'; btn.style.display='block'; }
+  else if(mExpanded && items.length>MFOLD_LIMIT){ btn.textContent='收起，只看前 '+MFOLD_LIMIT+' 个 ▲'; btn.style.display='block'; }
+  else { btn.textContent='展开全部 ▼'; btn.style.display='none'; }
+}
+window.toggleMoreList=function(){ mExpanded=!mExpanded; applyMoreLimit(); };
 
 /* ===== 筛选 ===== */
 /* 单条件匹配判断；skipKey=模拟"去掉该项筛选"（用于智能放宽） */
@@ -671,6 +857,9 @@ function apply(){
       if(!hay.includes(searchQ)) ok=false;
     }
     tr.style.display=ok?'':'none'; tr.classList.toggle('match',ok);
+    // 手机端列表同步筛选（用 dim 类标记不显示的条目，避免与「折叠 8 条」的 display 冲突）
+    const mi=document.querySelector(`.mi[data-id="${p.id}"]`);
+    if(mi){ mi.classList.toggle('dim',!ok); mi.classList.toggle('match',ok); }
     if(ok){count++; if(!firstMatch)firstMatch=p.name;}
   });
   const box=document.getElementById('result');
@@ -698,6 +887,8 @@ function apply(){
   updateChipCounts();
   renderHot();
   renderQuick();
+  markNewBadges();        // 「新」标统一在此判定（apply 是所有数据分支加载完后的必经收口）
+  applyMoreLimit();       // 手机端：筛选后重新计算折叠条数（必须在 markNewBadges 之后，否则会被重渲染覆盖）
 }
 /* 智能筛选：每个选项实时显示"今天清单里单独命中该条件"的地点数；0 命中自动置灰禁选 */
 function updateChipCounts(){
@@ -739,6 +930,43 @@ function renderQuick(){
 /* ===== 每日热门（每日 8:00 刷新） ===== */
 let hotDay='';
 function hotSeed(){const n=new Date();return n.getFullYear()+'-'+(n.getMonth()+1)+'-'+n.getDate();}
+/* 首次发现日期是否在 7 天内（决定是否打「新」标） */
+function isFresh(ymd){
+  if(!ymd) return false;
+  const t=Date.parse(String(ymd).replace(/-/g,'/'));
+  if(isNaN(t)) return false;
+  return (Date.now()-t) <= 7*24*3600*1000;
+}
+/* 统一刷新「新」标：只认「新增时记录下来的首次发现日期」，且需在 7 天内。
+   历史无记录的地点视为老地点，不打「新」（避免整批补全后满屏都是「新」）。 */
+function refreshNewFlags(){
+  let seen={}; try{ seen=JSON.parse(localStorage.getItem('fz_seen')||'{}'); }catch(e){}
+  let dirty=false;
+  PLACES.forEach(p=>{
+    const cn=normCore(p.name);
+    if(!seen[cn]){ seen[cn]=hotSeed(); dirty=true; }   // 首次见到 → 记为今天（7 天后自动不再算新）
+    p.isNew = isFresh(seen[cn]);
+  });
+  if(dirty){ try{ localStorage.setItem('fz_seen',JSON.stringify(seen)); }catch(e){} }
+}
+/* 「新」标的落地：判定 + 把标记画到表格与手机卡片上。
+   注意：必须由 apply() 末尾调用——apply 是内嵌快照/后端/本地快照/高德实时检索
+   四条数据分支加载完成后的必经收口，放在这里才能保证 PLACES 已有数据。
+   同时数据里若已无新地点，要主动把旧的「🌟新」擦掉，避免残留。 */
+let _newSig='';
+function markNewBadges(){
+  if(!PLACES.length) return;
+  refreshNewFlags();
+  if(document.body) document.body.dataset.newsig = PLACES.filter(p=>p.isNew).length + '/' + PLACES.length;
+  const sig = PLACES.map(p=>p.id+(p.isNew?'1':'0')).join(',');
+  if(sig===_newSig) return;      // 内容没变就不重绘，避免滚动位置/展开状态被重置
+  _newSig=sig;
+  PLACES.forEach(p=>{
+    const tr=body.querySelector(`tr[data-id="${p.id}"] .place`);
+    if(tr) tr.innerHTML=`${p.name}${p.isNew?' <span class="note">🌟新</span>':''}<br><span class="note">${p.sub}</span>`;
+  });
+  if(document.querySelectorAll('.mi').length) renderMList();
+}
 function renderHot(){
   const now=new Date(); const dow=now.getDay(); const weekend=(dow===0||dow===6);
   // 以"天"为种子做轮换：每天只变一次（用当天日期做偏移，保证每日稳定但不写死 ID）
@@ -1076,59 +1304,6 @@ const SPOT_NOTES={
   '常春藤成长图书馆':{u:"鼓楼卫前街附近亲子绘本馆（冠城大通首玺），偏商业亲子阅读空间，绘本丰富、活动多，适合低幼亲子共读",warn:"多为商业绘本馆，可能收费或需办卡，去前确认；规模小以阅读活动为主",food:"馆内无餐；就近东街口、卫前街商圈餐饮"},
   '福建师范大学仓山校区图书馆':{u:"福建师大仓山老校区图书馆（上三路8号），老校园榕荫浓、书香旧，适合大孩子感受老校氛围",warn:"高校馆公众开放需确认；老校区设施旧、步行多；非亲子专属",food:"就近师大学生街（文化街）餐饮丰富便宜"},
   '福耀科技大学图书馆':{u:"新建高校图书馆（闽侯，福耀科技大学校内），馆舍新、环境好；目前校区新，是否对公众开放需确认，适合周边顺路",warn:"新校区，公众开放政策未明，先确认；非亲子专属",food:"周边配套少；闽侯上街、甘蔗餐饮"},
-  "农大沙滩": {"u":"高德检索到的带娃目的地（风景名胜），评分4.5，位于三环快速。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "南江滨生态公园-金沙公园": {"u":"高德检索到的带娃目的地（风景名胜），评分4.6，位于南江滨东大道三江口生态公园。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "南江滨生态公园-人造沙滩": {"u":"高德检索到的带娃目的地（风景名胜），评分4.1，位于南江滨东大道南江滨生态园。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "闽侯县沙都澳露营基地": {"u":"高德检索到的带娃目的地（风景名胜），评分4.5，位于鸿尾乡埕头村。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "凤山沙滩": {"u":"高德检索到的带娃目的地（风景名胜），评分3.4，位于星星充电汽车充电站(星星充电-埕头乡闽恒充电站)东北侧70米。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "梅埔沙滩": {"u":"高德检索到的带娃目的地（风景名胜），评分4.0，位于梅溪镇梅埔村。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "琅岐沙滩": {"u":"高德检索到的带娃目的地（风景名胜），评分4.5，位于琅岐镇琅岐旅游度假区。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "下左坑沙滩": {"u":"高德检索到的带娃目的地（风景名胜），评分3.8，位于琯头镇后二村下左坑路。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "壶江沙滩": {"u":"高德检索到的带娃目的地（风景名胜），评分3.9，位于琯头镇壶江村。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "滨海沙滩": {"u":"高德检索到的带娃目的地（体育休闲服务），评分4.1，位于晓澳镇长沙村永平路。以游乐/运动设施为主，适合带娃放电；室内外结合，注意项目适合年龄","warn":"多为收费、项目另计；周末人多排队；动物/游乐区注意卫生与手消毒；低幼选软包区","food":"馆内小卖部或商场内餐饮丰富（路线见地图）","_auto":true},
-  "龙沙海滨公园": {"u":"高德检索到的带娃目的地（风景名胜），评分3.4，位于琯头镇龙沙村五八路。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "仙人掌沙滩": {"u":"高德检索到的带娃目的地（风景名胜），评分3.7，位于琯头镇壶江村朝阳新村。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "龙沙沙滩": {"u":"高德检索到的带娃目的地（风景名胜），评分3.8，位于琯头镇龙沙村望江路。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "琅岐鼓尾海滩": {"u":"高德检索到的带娃目的地（风景名胜），评分4.1，位于闽江明珠绿道东北侧。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "古湖沙滩": {"u":"高德检索到的带娃目的地（风景名胜），评分4.2，位于琯头镇塘下村古湖。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "世茂湾沙滩": {"u":"高德检索到的带娃目的地（风景名胜），评分3.8，位于琯头镇龙沙村东岐。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "五虎礁海湾沙滩": {"u":"高德检索到的带娃目的地（风景名胜），评分3.6，位于琯头镇川石村。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "沙尾沙滩": {"u":"高德检索到的带娃目的地（风景名胜），评分3.3，位于纳潮路与迎旭路交叉口东300米。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "川石村南澳沙滩": {"u":"高德检索到的带娃目的地（风景名胜），评分3.2，位于琯头镇川石村南澳。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "望海楼沙滩": {"u":"高德检索到的带娃目的地（风景名胜），评分4.6，位于百户澳新村南侧250米。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "川石村北澳沙滩": {"u":"高德检索到的带娃目的地（风景名胜），评分3.4，位于琯头镇川石村北澳。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "横仑沙滩": {"u":"高德检索到的带娃目的地（风景名胜），评分4.3，位于晓澳镇。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "长乐下沙沙滩": {"u":"高德检索到的带娃目的地（风景名胜），评分4.7，位于长乐下沙海滨度假村(东北角)。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "长乐下沙海滨度假村": {"u":"高德检索到的带娃目的地（风景名胜），评分4.6，位于江田镇海滨北路与下沙路交叉口东200米。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "大鹤省级森林公园": {"u":"高德检索到的带娃目的地（风景名胜），评分4.1，位于湖南镇东北部海滨。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "浪漫沙滩": {"u":"高德检索到的带娃目的地（风景名胜），评分4.1，位于天地海鲜楼东北侧310米。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "北澳海滩": {"u":"高德检索到的带娃目的地（风景名胜），评分4.3，位于漳港街道漳港街道漳港街道漳港街道漳港镇南澳路。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "侯官沙滩": {"u":"高德检索到的带娃目的地（风景名胜），评分4.4，位于夜泊侯官·林熙沙滩派对西北侧100米。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "南澳海滩": {"u":"高德检索到的带娃目的地（风景名胜），评分4.5，位于滨海大道。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "长乐区象鼻澳海滩": {"u":"高德检索到的带娃目的地（风景名胜），评分4.5，位于滨海路象鼻��。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "滋澳海滩": {"u":"高德检索到的带娃目的地（风景名胜），评分4.4，位于滨海大道东150米。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "华侨公园": {"u":"高德检索到的带娃目的地（风景名胜），评分4.2，位于上渡横江路华侨公园(融侨江南水都附近)。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "沙堤市民公园": {"u":"高德检索到的带娃目的地（风景名胜），评分4.3，位于闽侯沙堤互通与G70福银高速交叉口东北180米。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "晋安湖公园": {"u":"高德检索到的带娃目的地（风景名胜），评分4.7，位于化工路43号(横屿地铁站C口步行370米)。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "晋安公园": {"u":"高德检索到的带娃目的地（风景名胜），评分4.2，位于鹤林路鹤林生态公园。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "甘蔗湿地公园": {"u":"高德检索到的带娃目的地（风景名胜），评分4.3，位于滨江西大道与旗下南路交叉口西320米。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "魁岐生态公园": {"u":"高德检索到的带娃目的地（风景名胜），评分4.0，位于马尾镇江滨东大道。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "塔礁洲湿地公园": {"u":"高德检索到的带娃目的地（风景名胜），评分4.0，位于祥谦镇江中村塔礁洲。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "马杭洲公园": {"u":"高德检索到的带娃目的地（风景名胜），评分4.2，位于贻燕路与燕山三路交叉口西160米。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "琅岐红光湖公园": {"u":"高德检索到的带娃目的地（风景名胜），评分4.6，位于琅岐镇环岛路。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "闽江河口国家湿地公园-生态鸟岛": {"u":"高德检索到的带娃目的地（风景名胜），评分4.1，位于闽江河口国家湿地公园内(西北角)。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "闽江河口国家湿地公园": {"u":"高德检索到的带娃目的地（风景名胜），评分4.5，位于201省道。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "福清市双拥公园": {"u":"高德检索到的带娃目的地（风景名胜），评分4.3，位于虎溪东侧。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "观音埔湿地公园": {"u":"高德检索到的带娃目的地（风景名胜），评分3.9，位于观音埔大桥西100米。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "福清市湿地公园": {"u":"高德检索到的带娃目的地（风景名胜），评分4.1，位于清盛大道与福政路交叉口东280米。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "猪母湾南岸湿地公园": {"u":"高德检索到的带娃目的地（风景名胜），评分4.6，位于北江滨路与南宅路交叉口西南40米。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "融元生态湿地": {"u":"高德检索到的带娃目的地（风景名胜），评分3.4，位于龙江街道松潭村。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "东桥湿地公园": {"u":"高德检索到的带娃目的地（风景名胜），评分3.6，位于。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "三江口生态公园": {"u":"高德检索到的带娃目的地（风景名胜），评分4.6，位于南江滨东大道。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "洞江湖公园": {"u":"高德检索到的带娃目的地（风景名胜），评分4.4，位于和谐路与峡港路交叉口南380米。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "虎溪公园": {"u":"高德检索到的带娃目的地（风景名胜），评分4.4，位于万翔花园23号。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "滨海新城东湖湿地公园": {"u":"高德检索到的带娃目的地（风景名胜），评分4.4，位于东湖西岸。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true},
-  "山海湿地公园": {"u":"高德检索到的带娃目的地（风景名胜），评分3.9，位于松坞村通港大道旁。城市绿地/景点，多免费开放，适合推车散步、草坪野餐、看景放风；江/河/山景类还能看日落","warn":"园内树荫与设施参差，正午暴晒带遮阳；江/水边段务必盯紧娃；无餐饮或仅小卖部，自带饮水零食；开放时间请出行前核实","food":"园内基本无餐厅，就近商圈餐饮（路线见地图）","_auto":true}
 };
 function spotNote(name){
   try{
@@ -1654,7 +1829,7 @@ function inferFromPOI(p,w,id){
   else { sell+='（评分暂未收录，点「查评分」看真实点评）'; }
   sell+='，出发前请确认开放时间与票价';               // 不臆造"免费"等不实信息
   const time=/海洋|水族|动物园/.test(combo)?'半天':(/馆/.test(combo)?'2h':'半天');
-  return {id,name,isNew:true,sub,lat:w.lat,lng:w.lng,w:wW.trim(),t:tT,indoor,shade,purpose,play,sell,time,food,
+  return {id,name,isNew:false,sub,lat:w.lat,lng:w.lng,w:wW.trim(),t:tT,indoor,shade,purpose,play,sell,time,food,
     uniq:sn?sn.u:'',warnU:sn?sn.warn:'',
     rating:re.rating||undefined, cost:re.cost||undefined, business:re.business||undefined};
 }
@@ -1689,7 +1864,7 @@ function mergePOIs(pois){
     const w=gcj2wgs(...p.location.split(',').map(Number).reverse());
     const np=inferFromPOI(p,w,newId++);
     const cn=normCore(p.name);
-    if(knownNew.has(cn)) np.isNew=false; else { np.isNew=true; knownNew.add(cn); }   // 已见过的不重复打🌟
+    knownNew.add(cn);   // 新标统一由 refreshNewFlags 按「首次出现 7 天内」判定
     PLACES.push(np); added++;
   });
   if(added||updated){
@@ -2083,7 +2258,8 @@ renderSaved();
 renderHistory();
 (async()=>{
   if(EMBEDDED_SNAPSHOT && Array.isArray(EMBEDDED_SNAPSHOT) && EMBEDDED_SNAPSHOT.length){
-    PLACES=[]; mergePOIs(EMBEDDED_SNAPSHOT); buildMarkers(); renderTable(); apply();
+    PLACES=[]; mergePOIs(EMBEDDED_SNAPSHOT);
+    buildMarkers(); renderTable(); apply();
     const pc=document.getElementById('placeCount'); if(pc)pc.textContent=PLACES.length;
     setDS('📦 已载入内嵌当日快照（'+EMBEDDED_SNAPSHOT.length+' 条原始 POI → '+PLACES.length+' 个推荐），由每日定时任务生成，免联网');
   }
