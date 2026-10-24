@@ -10,7 +10,27 @@
 |------|------|------|
 | 🗺️ 带娃指南 | https://zafaw.github.io/fuzhou-weekend/ | 主页面，手机 / 电脑都能开 |
 | 📲 安装到手机 | https://zafaw.github.io/fuzhou-weekend/install.html | 自动识别安卓 / iPhone，给出对应安装步骤 |
-| 🤖 安卓安装包 | [fuzhou-guide-v1.0.apk](https://github.com/ZafaW/fuzhou-weekend/releases/download/v1.0/fuzhou-guide-v1.0.apk) | 直接下载，装完桌面出现「带娃指南」图标 |
+| 🤖 安卓安装包 | https://github.com/ZafaW/fuzhou-weekend/releases/download/v1.0/fuzhou-guide-v1.0.apk | 直接下载，装完桌面出现「带娃指南」图标 |
+
+> 💡 **想把网址发给别人？** 直接复制下面代码框里的地址，手机微信 / 短信里长按粘贴即可；电脑上点代码框右上角的复制图标，或点地址会自动全选。
+
+**带娃指南**
+
+```text
+https://zafaw.github.io/fuzhou-weekend/
+```
+
+**安装到手机**（一个链接自动识别系统）
+
+```text
+https://zafaw.github.io/fuzhou-weekend/install.html
+```
+
+**安卓安装包**（想直接装包就给这个）
+
+```text
+https://github.com/ZafaW/fuzhou-weekend/releases/download/v1.0/fuzhou-guide-v1.0.apk
+```
 
 ## ✨ 能做什么
 
