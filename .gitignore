@@ -1,0 +1,34 @@
+# ===== 密钥与凭据（绝对不能提交）=====
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+secrets.json
+config.local.js
+origins.local.json
+
+# ===== 本地运行时产物 =====
+cache/
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
+
+# ===== 安卓构建产物 =====
+android-app/app/build/
+android-app/build/
+android-app/.gradle/
+android-app/local.properties
+*.apk
+*.aab
+!fuzhou-guide-v1.0.apk
+
+# ===== 编辑器 / 工具链 =====
+.idea/
+.vscode/
+*.swp
+__pycache__/
