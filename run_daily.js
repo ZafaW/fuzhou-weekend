@@ -69,25 +69,187 @@ function normName(n){ return (n||'').replace(/[（(][^()（）]*[)）]/g,'').tri
 // 用函数式 replace，避免高德数据里的 $ 被当成替换模式。
 function patchSpotNotes(tplHtml, added){
   if(!added.length) return tplHtml;
+  // 必须锚定「行首 };」结束（非贪婪 .*? 会被字段值里的 }; 提前截断，导致整块内容丢失）
   const m = tplHtml.match(/(const SPOT_NOTES=\{[\s\S]*?\n\};)/);
   if(!m) return tplHtml;
+  // 安全校验：解析出的块若无条目或条目数明显偏少，说明锚点不对，宁可不动
+  const cntInBlock=(m[1].match(/['"][^'"]+['"]:\s*\{\s*['"]?u['"]?\s*:/g)||[]).length;
+  if(cntInBlock===0) return tplHtml;
   const block = m[1];
   const inner = block.slice('const SPOT_NOTES={'.length, block.length-2); // 去掉首尾 {}
   const trimmed = inner.replace(/\s+$/,'');
-  const lastChar = trimmed.slice(-1);
-  const sep = (lastChar===',') ? '' : ',';   // 已有逗号则复用，否则补一个
+  const sep = (trimmed.slice(-1)===',') ? '' : ',';   // 已有逗号则复用，否则补一个
   const lines = added.map(a=>"  "+JSON.stringify(a.n)+": "+JSON.stringify({u:a.u,warn:a.warn,food:a.food,_auto:true}));
   const newInner = trimmed + sep + '\n' + lines.join(',\n') + '\n';
   return tplHtml.replace(block, () => 'const SPOT_NOTES={' + newInner + '};');
 }
 
+/* ===== 同场所细分点合并（跨起点合并结果去重，避免同一片沙滩/公园刷出多条） =====
+   只做两类「高置信」合并，宁少勿错：
+   A) 「父名-子点」：父名已在列表中 → 子点并入父名
+   B) 同一场所的不同叫法：核心名相近 + 同在海边/山边（≤5km）+ 名称都以同类型词结尾
+   —— 刻意不按「类型相同」合并，避免「福州广场」被并进某个公园这类误伤。 */
+const SUB_SUFFIX=/(观景台|观景平台|瞭望台|观景塔|观景点|北门|南门|东门|西门|正门|大门|入口|出口|出入口|主入口|停车场|停车区|游客中心|游客服务中心|售票处|售票厅|服务中心|服务区|服务站|咨询台|卫生间|洗手间|公厕|驿站|美食广场|美食街|商铺|店铺|一期|二期|三期|东区|西区|南区|北区|中区|儿童乐园|游乐区|萌宠园|科普区|表演场|观景区|游览区|体验区|亲子区|戏水区|沙池|凉亭|旱溪|柳树平台|平台|码头|栈道|步道|绿道|廊桥|雕塑|石碑|喷泉|花海|草坪|露营区|野餐区)$/;
+/* 类型词按「越长越具体」排序，先匹配到更具体的（沙滩公园 应判为公园，而不是沙滩） */
+const KINDS=['海滨浴场','浴场','森林公园','湿地公园','儿童公园','主题公园','沙滩公园','海滨公园','海洋世界','水族馆','科技馆','图书馆','植物园','动物园','风景区','古镇','古街','温泉','沙滩','海滩','湿地','公园','广场'];
+function haversineKm(a,b){
+  const R=6371, rad=x=>x*Math.PI/180;
+  const dLat=rad(b.lat-a.lat), dLng=rad(b.lng-a.lng);
+  const s=Math.sin(dLat/2)**2 + Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(s));
+}
+const ADMIN_PREFIX=/^(福州市|福建省|福州|中国|长乐区|长乐市|长乐|闽侯县|闽侯|连江县|连江|永泰县|永泰|罗源县|罗源|闽清县|闽清|平潭县|平潭|马尾区|马尾|晋安区|晋安|仓山区|仓山|鼓楼区|鼓楼|台江区|台江|琅岐镇|琅岐|琯头镇|晓澳镇|漳港街道|漳港|白沙镇)/;
+/* 剥掉行政前缀 + 括号；保留连字符（用于识别「父名-子点」），由调用方按需去连字符 */
+function coreName(n, keepDash){
+  let s=(n||'').replace(/[（(][^()（）]*[)）]/g,'').trim();
+  s=s.replace(ADMIN_PREFIX,'').trim();
+  if(!keepDash) s=s.replace(/[－\-—]/g,'');
+  return s.trim();
+}
+/* 名称的「类型词」：取落尾的那个（沙滩公园→沙滩公园，侯官沙滩→沙滩） */
+function kindOf(n){
+  const s=coreName(n);
+  for(const k of KINDS){ if(s.endsWith(k)) return k; }
+  return '';
+}
+/* 去掉类型词后的「专名」，用于判断是否同一场所 */
+/* 类型词是否同类：沙滩/海滩/沙滩公园 属同一类滨海场所；公园 与 沙滩公园 可跨（沙滩公园内实体） */
+function kinCompatible(a,b){
+  if(a===b) return true;
+  const sea=/沙滩|海滩|海滨|浴场/;
+  if(sea.test(a) && sea.test(b)) return true;
+  return false;
+}
+function stemOf(n){
+  const s=coreName(n), k=kindOf(n);
+  if(!k || !s.endsWith(k)) return s;
+  let st=s.slice(0, s.length-k.length);
+  // 「沙滩公园」整名就是类型词 → 再剥一层泛类型词（公园），专名回到「沙滩」
+  if(!st && /^(沙滩|海滩|湿地|森林|海滨|儿童|主题)公园$/.test(k)) st=k.replace(/公园$/,'');
+  // 「体育公园」等把属性当专名时，剥掉「体育」这类非专有属性词，避免与「金牛山公园」混淆
+  st=st.replace(/(体育|休闲|郊野|城市|综合|文化|生态)$/,'');
+  return st;
+}
+function xy(p){
+  const parts=(p.location||'').split(',').map(Number);
+  if(parts.length!==2 || isNaN(parts[0])||isNaN(parts[1])) return null;
+  return {lng:parts[0], lat:parts[1]};   // 均为高德 GCJ-02，可直接算距离
+}
+function ratingOf(p){ const r=p.biz_ext&&p.biz_ext.rating; const v=Number(Array.isArray(r)?0:r); return isNaN(v)?0:v; }
+/* 组内挑最该展示的主条目：非子点优先 → 有评分优先 → 评分高 → 有地址 */
+function pickMain(group){
+  return group.slice().sort((a,b)=>{
+    const aSub=(SUB_SUFFIX.test(coreName(a.name))||/[－\-—]/.test(a.name))?0:1;
+    const bSub=(SUB_SUFFIX.test(coreName(b.name))||/[－\-—]/.test(b.name))?0:1;
+    if(aSub!==bSub) return bSub-aSub;
+    const ar=ratingOf(a), br=ratingOf(b);
+    if((ar>0)!==(br>0)) return (br>0)-(ar>0);
+    if(br!==ar) return br-ar;
+    return (b.address?1:0)-(a.address?1:0);
+  })[0];
+}
+function dedupeSamePlace(list){
+  const n=list.length;
+  const dead=new Array(n).fill(false);
+  const folded=[];
+  const core=list.map(p=>coreName(p.name, true));
+  const pos=list.map(xy);
+  const addrOf=p=>String(p.address||'').replace(/[（(][^()（）]*[)）]/g,'');
+  // 明确子设施：动物馆/展馆/亭台/入口/停车/驿站等（不包含「沙滩/公园/乐园/度假村」这类独立场所名）
+  const SUB_ONLY=/(观景台|观景平台|瞭望台|观景塔|观景点|北门|南门|东门|西门|正门|大门|主入口|入口|出口|出入口|停车场|停车区|游客中心|游客服务中心|售票处|售票厅|服务中心|服务区|服务站|咨询台|卫生间|洗手间|公厕|驿站|美食广场|美食街|一期|二期|三期|东区|西区|南区|北区|中区|游乐区|萌宠园|科普区|表演场|观景区|游览区|体验区|亲子区|戏水区|沙池|凉亭|旱溪|柳树平台|平台|码头|栈道|步道|绿道|廊桥|雕塑|石碑|喷泉|花海|草坪|露营区|野餐区|广场)$/;
+  const EXHIBIT=/^[一-龥]{1,5}(馆|区|苑|舍|笼|棚|池|展区|展示|馆区)$/;
+  const isSubName=(nm)=>{
+    const c=coreName(nm);
+    if(EXHIBIT.test(c) && !/沙滩|海滩|公园|乐园|度假村|酒店|餐厅/.test(c)) return true;
+    // 「XX-凉亭 / XX-主入口广场 / XX-长颈鹿馆」形态
+    const m=c.match(/^(.{2,})[－\-—](.+)$/);
+    if(m && (SUB_ONLY.test(m[2]) || EXHIBIT.test(m[2]))) return true;
+    return false;
+  };
+
+  // A) 「父名-子点」：父名在列表中 → 子点并入
+  for(let i=0;i<n;i++){
+    if(dead[i]) continue;
+    const m=core[i].match(/^(.{2,})[－\-—](.+)$/);
+    if(!m) continue;
+    if(!isSubName(list[i].name)) continue;
+    const parent=m[1].trim();
+    const pIdx=core.findIndex((cj,j)=>j!==i && !dead[j] && (cj===parent || cj===parent+'公园' || coreName(list[j].name)===parent));
+    if(pIdx>=0){ dead[i]=true; folded.push({name:list[i].name, into:list[pIdx].name}); }
+  }
+
+  // B) 纯子设施名（华南虎馆/狼馆/河马馆）→ 地址写明在某场所内，则并入该场所
+  for(let i=0;i<n;i++){
+    if(dead[i]) continue;
+    if(!isSubName(list[i].name)) continue;          // 只对「明确子设施」启用，独立场所名绝不并
+    const ai=addrOf(list[i]);
+    if(!ai) continue;
+    let best=-1, bestLen=0;
+    for(let j=0;j<n;j++){
+      if(j===i||dead[j]) continue;
+      const nm=list[j].name;
+      if(!/公园|动物园|景区|景区|风景区|乐园|海洋|度假村|广场/.test(nm)) continue;
+      const nj=coreName(nm);
+      if(nj.length<3) continue;
+      if(ai.includes(nj) && nj.length>bestLen){ best=j; bestLen=nj.length; }
+    }
+    if(best>=0){ dead[i]=true; folded.push({name:list[i].name, into:list[best].name}); }
+  }
+
+  // B2) 「XX-子设施」且 XX 本身就在列表中 → 并入（沙滩公园-凉亭 / 沙滩公园-主入口广场）
+  for(let i=0;i<n;i++){
+    if(dead[i]) continue;
+    const m=core[i].match(/^(.{2,})[－\-—](.+)$/);
+    if(!m) continue;
+    if(!(SUB_ONLY.test(m[2]) || EXHIBIT.test(m[2]))) continue;
+    const parent=m[1].trim();
+    const pIdx=core.findIndex((cj,j)=>j!==i && !dead[j] && (cj===parent || cj===parent+'公园'));
+    if(pIdx>=0){ dead[i]=true; folded.push({name:list[i].name, into:list[pIdx].name}); }
+  }
+
+  // C) 同一场所的不同叫法：专名高度相近 + 类型词一致 + 距离≤1.5km（侯官沙滩/侯官村沙滩公园）
+  const idxs=[...Array(n).keys()].filter(i=>!dead[i]);
+  const used=new Set();
+  for(let a=0;a<idxs.length;a++){
+    if(used.has(a)) continue;
+    const ia=idxs[a], pa=list[ia];
+    const ka=kindOf(pa.name), sa=stemOf(pa.name), xa=pos[ia];
+    const group=[ia];
+    if(ka && xa){
+      for(let b=a+1;b<idxs.length;b++){
+        if(used.has(b)) continue;
+        const ib=idxs[b], pb=list[ib], xb=pos[ib];
+        if(!xb) continue;
+        if(haversineKm(xa,xb)>1.5) continue;
+        if(!kinCompatible(ka, kindOf(pb.name))) continue;
+        const sb=stemOf(pb.name);
+        const stemClose=(sa&&sb)&&(sa===sb || (sa.length<sb.length? (sb.startsWith(sa)&&sb.length-sa.length<=2) : (sa.startsWith(sb)&&sa.length-sb.length<=2)));
+        if(!stemClose) continue;
+        group.push(ib); used.add(b);
+      }
+    }
+    used.add(a);
+    if(group.length>1){
+      const main=pickMain(group.map(i=>list[i]));
+      for(const i of group){ if(list[i]!==main){ dead[i]=true; folded.push({name:list[i].name, into:main.name}); } }
+    }
+  }
+  return {list:list.filter((p,i)=>!dead[i]), folded};
+}
+
 (async()=>{
   // 1) 拉生成器 + 模板 + 起点清单
   const snap = await getFile('build_snapshot.js');
-  const tpl = await getFile('福州带娃周末出行.html','奇达村',6);
+  // 读取模板：用「结构标记」而非具体地名做校验（地名会随清单更新消失，导致标记永不命中→白等重试）
+  const tpl = await getFile('福州带娃周末出行.html','const SPOT_NOTES={',3);
   if(!snap || !tpl){ console.error('[错] 仓库缺少 build_snapshot.js 或 福州带娃周末出行.html（模板），请先推送这两个文件'); process.exit(1); }
   fs.writeFileSync(path.join(TMP,'build_snapshot.js'), b64dec(snap.content));
   const tplHtml0 = b64dec(tpl.content);
+  // 自检：模板必须是「干净模板」（含快照占位符），否则每天都会在生成环节失败
+  if(!tplHtml0.includes('const EMBEDDED_SNAPSHOT = null;')){
+    console.error('[错] 仓库模板缺少占位符 const EMBEDDED_SNAPSHOT = null;（模板被生成结果覆盖了，需还原为干净模板）');
+    process.exit(1);
+  }
   fs.writeFileSync(path.join(TMP,'tpl.html'), tplHtml0);
   const snapMod = require(path.join(TMP,'build_snapshot.js'));
 
@@ -101,10 +263,16 @@ function patchSpotNotes(tplHtml, added){
     origins = [{ name:'农林大学(默认)', lng: snapMod.START.lng, lat: snapMod.START.lat }];
     // 写回种子 origins.json
     try{
-      await gh('PUT','/repos/'+OWNER+'/'+REPO+'/contents/'+encodeURIComponent('origins.json'),
-        { message:'初始化起点清单', content: b64enc(JSON.stringify({origins}, null, 2)), branch: BRANCH });
+      const body = { message:'初始化起点清单', content: b64enc(JSON.stringify({origins}, null, 2)), branch: BRANCH };
+      // 文件已存在时必须带 sha（GitHub Contents API 规则），否则 422 "sha wasn't supplied"
+      try{ const cur = await getFile('origins.json'); if(cur && cur.sha) body.sha = cur.sha; }catch(e){}
+      await gh('PUT','/repos/'+OWNER+'/'+REPO+'/contents/'+encodeURIComponent('origins.json'), body);
       console.log('[起点] 已写入种子 origins.json（默认：农林大学）');
-    }catch(e){ console.error('[起点] 种子写入失败（每日仍按默认检索）：', e.message); }
+    }catch(e){
+      // 已存在同内容文件时 GitHub 会报 422 "sha ... is at ... but expected ..."，属幂等写入，不算失败
+      if(/sha/i.test(e.message) && /exist|same|expected/i.test(e.message)) console.log('[起点] origins.json 已存在且内容一致，跳过写入');
+      else console.warn('[起点] 种子写入失败（每日仍按默认检索，不影响出清单）：', e.message);
+    }
   }
   console.log('[起点] 共 '+origins.length+' 个：'+origins.map(o=>o.name).join('、'));
 
@@ -117,13 +285,21 @@ function patchSpotNotes(tplHtml, added){
     const seen = new Set(merged.map(p=>(p.name||'')+'|'+(p.location||'')));
     for(const p of def){ const k=(p.name||'')+'|'+(p.location||''); if(!seen.has(k)){ seen.add(k); merged.push(p); } }
     console.log('[检索] 围绕 '+origins.length+' 个起点 80km 合并去重后 POI '+merged.length+' 个');
+    // 同场所细分点合并：同一片沙滩/公园的多个点位只留主条目（父名-子点、近距同名）
+    const before = merged.length;
+    const dd = dedupeSamePlace(merged);
+    merged = dd.list;
+    if(dd.folded.length){
+      console.log('[合并] 同场所细分点 '+dd.folded.length+' 条已并入主条目（'+before+' → '+merged.length+'）：'+
+        dd.folded.slice(0,12).map(f=>f.name+'→'+f.into).join('、')+(dd.folded.length>12?' …':''));
+    }
   }catch(e){ console.error('[检索] 异常：', e.message); }
 
   // 4) 与知识库比对，自动补全缺口（安全合并）
   let patched = tplHtml0, added = [], autoCount = 0, skipSub = 0;
   try{
     const m = tplHtml0.match(/(const SPOT_NOTES=\{[\s\S]*?\n\};)/);
-    const have = new Set((m[1].match(/'([^']+)':\{u:/g)||[]).map(s=>((s.match(/^'([^']+)':\{u:/)||[])[1]||'')));
+    const have = new Set((m[1].match(/(['"])([^'"]+)\1:\s*\{\s*['"]?u['"]?\s*:/g)||[]).map(s=>{const mm=s.match(/^(['"])([^'"]+)\1:\s*\{\s*['"]?u['"]?\s*:/);return mm?mm[2]:'';}));
     const haveArr = [...have];
     // 自动补全「精修标准」：按类型给出实用攻略，不再输出「待人工补全」占位；仍标记 _auto 便于识别待进一步打磨
     const autoFill = (p) => {
@@ -158,8 +334,15 @@ function patchSpotNotes(tplHtml, added){
       added.push({ n, u: note.u, warn: note.warn, food: note.food });
     }
     patched = patchSpotNotes(tplHtml0, added);
+    // 自检：补全后 SPOT_NOTES 必须真的变长，否则说明写入失效（不能再静默当作成功）
+    const cntNotes=(h)=>(h.match(/['"][^'"]+['"]:\s*\{\s*['"]?u['"]?\s*:/g)||[]).length;
+    const beforeCnt=cntNotes(tplHtml0);
+    const afterCnt=cntNotes(patched);
+    if(added.length && afterCnt < beforeCnt){
+      throw new Error('SPOT_NOTES 写入未生效（'+beforeCnt+' → '+afterCnt+'），已放弃本次自动补全');
+    }
     autoCount = added.length;
-    console.log('[确认] 知识库已有 '+have.size+' 个；本次自动补全 '+added.length+' 个新地点（_auto 待精修）'+(added.length?('：'+added.join('、')):''));
+    console.log('[确认] 知识库已有 '+have.size+' 个；本次自动补全 '+added.length+' 个新地点（_auto 待精修）'+(added.length?('：'+added.map(a=>a.n).join('、')):''));
     console.log('[确认] 跳过子设施 '+skipSub+' 个（地址已含父景区，如动物园内虎馆、植物园子区）');
   }catch(e){
     patched = tplHtml0;
@@ -186,7 +369,11 @@ function patchSpotNotes(tplHtml, added){
   const content = b64enc(outHtml);
   console.log('[生成] 今日.html 大小 '+(fs.statSync(outPath).size/1024).toFixed(0)+'KB');
 
-  // 7) 写回仓库：index.html（发布） + 模板（累积自动补全） + origins.json 若变化由上游维护
+  // 7) 写回仓库：index.html（发布） + 模板（累积自动补全）
+  // 安全校验：生成结果若丢失了模板已有的关键结构（如手机抽屉目录、热门卡片按钮），说明读取到旧副本，宁可失败也不发布旧版
+  const MUST_HAVE = ['id="tocDrawer"', 'data-act="guide"', 'id="mList"', 'id="mMore"', 'markNewBadges', 'renderMList'];
+  const lost = MUST_HAVE.filter(k => tplHtml0.includes(k) && !outHtml.includes(k));
+  if(lost.length){ console.error('[错] 生成结果丢失关键结构：'+lost.join(', ')+'（疑似读取到旧模板副本），已中止发布'); process.exit(1); }
   const existing = await getFile('index.html');
   const payload = { message:'每日快照 '+new Date().toISOString().slice(0,10)+' · 扩库+'+autoCount, content, branch: BRANCH };
   if(existing && existing.sha) payload.sha = existing.sha;
