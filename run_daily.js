@@ -79,7 +79,7 @@ function patchSpotNotes(tplHtml, added){
   const inner = block.slice('const SPOT_NOTES={'.length, block.length-2); // 去掉首尾 {}
   const trimmed = inner.replace(/\s+$/,'');
   const sep = (trimmed.slice(-1)===',') ? '' : ',';   // 已有逗号则复用，否则补一个
-  const lines = added.map(a=>"  "+JSON.stringify(a.n)+": "+JSON.stringify({u:a.u,warn:a.warn,food:a.food,_auto:true}));
+  const lines = added.map(a=>"  "+JSON.stringify(a.n)+": "+JSON.stringify({u:a.u,warn:a.warn,food:a.food,_auto:true,_type:a._type||'',_addr:a._addr||'',_rating:a._rating||''}));
   const newInner = trimmed + sep + '\n' + lines.join(',\n') + '\n';
   return tplHtml.replace(block, () => 'const SPOT_NOTES={' + newInner + '};');
 }
@@ -149,6 +149,137 @@ const ALIAS = {
 function aliasOf(n){
   const c=coreName(n);
   return ALIAS[n] || ALIAS[c] || ALIAS[stemOf(n)] || n;
+}
+
+/* ===== 大模型深度提质（可选，零依赖 OpenAI 兼容接口）=====
+   仅对 SPOT_NOTES 中 _auto:true（机器生成、待精修）的条目做提质；
+   人工精修过的条目（无 _auto）永不触碰。提质后标记 _llm:true + _llm_date，
+   避免重复花费；超过 LLM_REUPGRADE_DAYS 天的 _auto 条目会被重新提质。
+   未配置 LLM_API_KEY 时自动降级（沿用 autoFill 基础攻略），不影响主流程。 */
+const LLM_API_KEY = (process.env.LLM_API_KEY||'').trim();
+const LLM_BASE_URL = (process.env.LLM_BASE_URL||'https://api.deepseek.com/v1').replace(/\/+$/,'');
+const LLM_MODEL = (process.env.LLM_MODEL||'deepseek-chat').trim();
+const LLM_REUPGRADE_DAYS = Math.max(0, Number(process.env.LLM_REUPGRADE_DAYS||'30')||0);
+const LLM_MAX_PER_RUN = Math.max(1, Number(process.env.LLM_MAX_PER_RUN||'40')||1);
+const LLM_ENABLED = !!LLM_API_KEY;
+
+function todayISO(){ const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+function dateDiffDays(s){ try{ const a=new Date(s), b=new Date(); return Math.floor((b-a)/86400000); }catch(e){ return 999; } }
+function stripJson(text){
+  if(!text) return null;
+  let t=text.trim();
+  const i=t.indexOf('{'), j=t.lastIndexOf('}');
+  if(i>=0&&j>i) t=t.slice(i,j+1);
+  try{ return JSON.parse(t); }catch(e){ return null; }
+}
+// OpenAI 兼容 chat/completions（零依赖 https）
+function llmChat(system, user){
+  return new Promise((resolve,reject)=>{
+    if(!LLM_ENABLED) return reject(new Error('LLM 未启用'));
+    const body=JSON.stringify({model:LLM_MODEL, messages:[{role:'system',content:system},{role:'user',content:user}], temperature:0.6, max_tokens:500, response_format:{type:'json_object'}});
+    let u; try{ u=new URL(LLM_BASE_URL+'/chat/completions'); }catch(e){ return reject(e); }
+    const req=https.request({hostname:u.hostname,port:u.port||443,path:u.pathname+(u.search||''),method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+LLM_API_KEY}}, res=>{
+      let b=''; res.on('data',c=>b+=c); res.on('end',()=>{
+        try{
+          if(res.statusCode!==200) return reject(new Error('LLM HTTP '+res.statusCode+' '+(b||'').slice(0,160)));
+          const j=JSON.parse(b); const txt=(j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content)||'';
+          if(!txt) return reject(new Error('LLM 返回空'));
+          resolve(txt);
+        }catch(e){ reject(new Error('LLM 解析失败 '+(b||'').slice(0,160))); }
+      });
+    });
+    req.on('error', reject);
+    req.setTimeout(25000, ()=>{ try{req.destroy();}catch(e){} reject(new Error('LLM 超时')); });
+    req.write(body); req.end();
+  });
+}
+const LLM_SYSTEM = '你是福州本地亲子出行攻略编辑。根据用户提供的地点【类型、地址、评分】等真实信息及通用带娃常识，撰写具体、实用的亲子游玩攻略。仅基于给定信息与常识，严禁编造具体票价、营业时间、设施名称、电话、路线等细节；不确定就用通用建议。只输出一个 JSON 对象（不要解释文字）：{"u":"怎么玩/亮点，口语化，60字内","warn":"注意事项，50字内","food":"餐饮建议，40字内"}';
+function llmUpgradeOne(name, kind, addr, rating){
+  const info='地点：'+name+'\n类型：'+(kind||'亲子目的地')+'\n地址：'+(addr||'当地')+'\n评分：'+(rating||'暂无');
+  return llmChat(LLM_SYSTEM, info+'\n\n请基于以上真实信息，为该地点撰写差异化亲子攻略（沙滩、森林、动物园、湿地等类型应有不同侧重）。').then(stripJson).then(o=>{
+    if(!o||typeof o.u!=='string'||typeof o.warn!=='string'||typeof o.food!=='string'||!o.u.trim()||!o.warn.trim()||!o.food.trim()) return null;
+    return { u:o.u.trim().slice(0,80), warn:o.warn.trim().slice(0,70), food:o.food.trim().slice(0,60) };
+  }).catch(()=>null);
+}
+// 解析并重写 SPOT_NOTES 中的 _auto 待精修条目（超时/失败降级、每轮上限、可定时重提质）
+// 前提：SPOT_NOTES 条目值为扁平 JSON（u/warn/food/_auto 等），字符串值不含花括号
+/* ===== 每日信息保鲜（零额外 API，复用当天 merged 高德数据）=====
+   命中（名称/别名一致）→ 写 _rating_now（最新评分）；
+   未命中且「曾检索到过」（已有 _rating_now）→ 保守标 _gone（可能停业/搬迁/超范围）；
+   未命中且无历史记录 → 不动（避免对远郊/冷门地点误报停业）。 */
+async function freshenNotes(html, merged){
+  const m=html.match(/(const SPOT_NOTES=\{[\s\S]*?\n\};)/);
+  if(!m || !Array.isArray(merged)) return html;
+  const block=m[1];
+  const lines=block.split('\n');
+  const entryRe=/^\s*('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")\s*:\s*(\{.*\})\s*,?\s*$/;
+  const byName=new Map();
+  for(const p of merged){
+    const nm=(p.name||'').trim(); if(!nm) continue;
+    const key=aliasOf(nm);
+    if(!byName.has(key)) byName.set(key, p);
+  }
+  const rows=[];
+  for(let r=0;r<lines.length;r++){
+    const mm=lines[r].match(entryRe); if(!mm) continue;
+    const name=mm[1].slice(1,-1).replace(/\\'/g,"'").replace(/\\"/g,'"');
+    let val; try{ val=JSON.parse(mm[2]); }catch(e){ continue; }
+    rows.push({r,name,val});
+  }
+  let refreshed=0, gone=0, changed=0;
+  for(const {r,name,val} of rows){
+    const key=aliasOf(name);
+    const hit=byName.get(key);
+    if(hit){
+      const rating=(hit.biz_ext&&hit.biz_ext.rating)||'';
+      const nv=Object.assign({},val,{_rating_now:rating});
+      delete nv._gone; delete nv._gone_date;
+      if(JSON.stringify(nv)!==JSON.stringify(val)){ lines[r]='  '+JSON.stringify(name)+': '+JSON.stringify(nv); changed++; }
+      refreshed++;
+    }else if(val._rating_now){
+      const nv=Object.assign({},val,{_gone:true,_gone_date:todayISO()});
+      if(JSON.stringify(nv)!==JSON.stringify(val)){ lines[r]='  '+JSON.stringify(name)+': '+JSON.stringify(nv); changed++; gone++; }
+    }
+  }
+  if(!changed){ console.log('[保鲜] 无结构化字段变化'); return html; }
+  console.log('[保鲜] 刷新 '+refreshed+' 个地点最新评分；'+gone+' 个今日未检索到已标「可能失效」；共 '+changed+' 条更新');
+  return html.replace(block, lines.join('\n'));
+}
+
+async function llmUpgradeNotes(html){
+  if(!LLM_ENABLED){ console.log('[LLM] 未配置 LLM_API_KEY，跳过深度提质（沿用 autoFill 基础攻略）'); return html; }
+  const m=html.match(/(const SPOT_NOTES=\{[\s\S]*?\n\};)/);
+  if(!m) return html;
+  const block=m[1];
+  const lines=block.split('\n');
+  // 条目均为单行 JSON（key: 扁平 JSON 值）；按行解析，避免跨行/前瞻的脆弱性
+  const entryRe=/^\s*('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")\s*:\s*(\{.*\})\s*,?\s*$/;
+  const targets=[];
+  for(let r=0;r<lines.length;r++){
+    const mm=lines[r].match(entryRe);
+    if(!mm) continue;
+    const name=mm[1].slice(1,-1).replace(/\\'/g,"'").replace(/\\"/g,'"');
+    let val; try{ val=JSON.parse(mm[2]); }catch(e){ continue; }
+    if(val._auto!==true) continue;
+    const need=(!val._llm)||(LLM_REUPGRADE_DAYS>0 && val._llm_date && dateDiffDays(val._llm_date)>=LLM_REUPGRADE_DAYS);
+    if(!need) continue;
+    targets.push({r,name,val});
+  }
+  if(!targets.length){ console.log('[LLM] 无待提质条目（_auto 均已 AI 精修过）'); return html; }
+  console.log('[LLM] 计划深度提质 '+targets.length+' 个 _auto 条目（上限 '+LLM_MAX_PER_RUN+'/轮，串行+超时保护）');
+  let ok=0, fail=0;
+  for(let i=0;i<targets.length && ok+fail<LLM_MAX_PER_RUN;i++){
+    const t=targets[i];
+    const kind=t.val._type||kindOf(t.name)||'';
+    const out=await llmUpgradeOne(t.name, kind, t.val._addr, t.val._rating);
+    if(!out){ fail++; continue; }
+    const newVal=Object.assign({}, t.val, {u:out.u, warn:out.warn, food:out.food, _auto:true, _llm:true, _llm_date:todayISO()});
+    lines[t.r]='  '+JSON.stringify(t.name)+': '+JSON.stringify(newVal);
+    ok++;
+  }
+  console.log('[LLM] 深度提质完成：成功 '+ok+' / 失败(降级保留原攻略) '+fail+(ok+fail>=LLM_MAX_PER_RUN?'（已达本轮上限，余下下次跑）':''));
+  if(ok===0) return html;
+  return html.replace(block, lines.join('\n'));
 }
 
 function xy(p){
@@ -401,10 +532,12 @@ function removeNoteEntry(block, key){
       const addr = (p.address||'') + (p.name||'');
       if(haveArr.some(h=>addr.indexOf(h)>=0)){ skipSub++; continue; }      // 子设施（地址含父景区名）跳过
       const note = autoFill(p);
-      added.push({ n: key, u: note.u, warn: note.warn, food: note.food });
+      added.push({ n: key, u: note.u, warn: note.warn, food: note.food, _type: p.type||'', _addr: p.address||'', _rating: (p.biz_ext&&p.biz_ext.rating)||'' });
     }
     patched = patchSpotNotes(tplHtml0, added);
     patched = dedupeNotesHtml(patched);   // 清理知识库内部重复（ALIAS 副名）
+    patched = freshenNotes(patched, merged);   // 每日信息保鲜：刷新评分 + 保守标「可能失效」
+    patched = await llmUpgradeNotes(patched);   // 大模型深度提质 _auto 条目（可选；无 key 自动降级）
     // 自检：补全后 SPOT_NOTES 必须真的变长，否则说明写入失效（不能再静默当作成功）
     const cntNotes=(h)=>(h.match(/['"][^'"]+['"]:\s*\{\s*['"]?u['"]?\s*:/g)||[]).length;
     const beforeCnt=cntNotes(tplHtml0);
