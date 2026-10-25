@@ -474,27 +474,41 @@ function removeNoteEntry(block, key){
   }
   console.log('[起点] 共 '+origins.length+' 个：'+origins.map(o=>o.name).join('、'));
 
-  // 3) 每日确认：围绕每个起点 80km 检索，合并去重
+  // 3) 每日确认：围绕每个起点 80km 检索，合并去重（REBUILD=1 时跳过高德，复用已发布快照）
+  const REBUILD = process.env.REBUILD === '1';
   let merged = [];
   try{
-    merged = await snapMod.aroundSearchAll(origins, 80);
-    // 兼容：默认起点再补一次关键词文本检索（0-30km），覆盖周边检索可能漏掉的类别
-    const def = await snapMod.refreshPOIs(30);
-    const seen = new Set(merged.map(p=>(p.name||'')+'|'+(p.location||'')));
-    for(const p of def){ const k=(p.name||'')+'|'+(p.location||''); if(!seen.has(k)){ seen.add(k); merged.push(p); } }
-    console.log('[检索] 围绕 '+origins.length+' 个起点 80km 合并去重后 POI '+merged.length+' 个');
-    // 同场所细分点合并：同一片沙滩/公园的多个点位只留主条目（父名-子点、近距同名）
-    const before = merged.length;
-    const dd = dedupeSamePlace(merged);
-    merged = dd.list;
-    if(dd.folded.length){
-      console.log('[合并] 同场所细分点 '+dd.folded.length+' 条已并入主条目（'+before+' → '+merged.length+'）：'+
-        dd.folded.slice(0,12).map(f=>f.name+'→'+f.into).join('、')+(dd.folded.length>12?' …':''));
+    if(REBUILD){
+      // 轻量重建：从已发布的 index.html 读回 EMBEDDED_SNAPSHOT（所有起点 80km 合并结果），
+      // 用「已 AI 精修的模板」重新生成并发布，使当天新抓的 _auto 地点当天即精修，消除 1 天滞后。
+      const idxF = await getFile('index.html');
+      const idxHtml = b64dec(idxF.content);
+      const mm = idxHtml.match(/const EMBEDDED_SNAPSHOT = (\[[\s\S]*?\]);/);
+      const slim = mm ? JSON.parse(mm[1]) : [];
+      if(!Array.isArray(slim) || slim.length < 5) throw new Error('读回已发布快照失败或为空');
+      merged = slim.map(s=>({ name:s.name, location:s.location, type:s.type, address:s.address, biz_ext:{rating:s.rating||'', cost:s.cost||''} }));
+      console.log('[REBUILD] 从已发布 index 读回快照 POI '+merged.length+' 个（跳过高德检索）');
+    } else {
+      merged = await snapMod.aroundSearchAll(origins, 80);
+      // 兼容：默认起点再补一次关键词文本检索（0-30km），覆盖周边检索可能漏掉的类别
+      const def = await snapMod.refreshPOIs(30);
+      const seen = new Set(merged.map(p=>(p.name||'')+'|'+(p.location||'')));
+      for(const p of def){ const k=(p.name||'')+'|'+(p.location||''); if(!seen.has(k)){ seen.add(k); merged.push(p); } }
+      console.log('[检索] 围绕 '+origins.length+' 个起点 80km 合并去重后 POI '+merged.length+' 个');
+      // 同场所细分点合并：同一片沙滩/公园的多个点位只留主条目（父名-子点、近距同名）
+      const before = merged.length;
+      const dd = dedupeSamePlace(merged);
+      merged = dd.list;
+      if(dd.folded.length){
+        console.log('[合并] 同场所细分点 '+dd.folded.length+' 条已并入主条目（'+before+' → '+merged.length+'）：'+
+          dd.folded.slice(0,12).map(f=>f.name+'→'+f.into).join('、')+(dd.folded.length>12?' …':''));
+      }
     }
-  }catch(e){ console.error('[检索] 异常：', e.message); }
+  }catch(e){ console.error('[检索/REBUILD] 异常：', e.message); }
 
   // 4) 与知识库比对，自动补全缺口（安全合并）
   let patched = tplHtml0, added = [], autoCount = 0, skipSub = 0;
+  if(!REBUILD){
   try{
     const m = tplHtml0.match(/(const SPOT_NOTES=\{[\s\S]*?\n\};)/);
     const have = new Set((m[1].match(/(['"])([^'"]+)\1:\s*\{\s*['"]?u['"]?\s*:/g)||[]).map(s=>{const mm=s.match(/^(['"])([^'"]+)\1:\s*\{\s*['"]?u['"]?\s*:/);return mm?mm[2]:'';}));
@@ -552,6 +566,9 @@ function removeNoteEntry(block, key){
     patched = tplHtml0;
     console.error('[确认] 跳过自动补全：', e.message);
   }
+  } else {
+    console.log('[REBUILD] 跳过自动补全/保鲜/LLM（模板已含最新精修，仅重建发布）');
+  }
 
   // 5) 生成自包含 HTML（默认起点 0-30km 快照，内嵌再扩为所有起点 80km 合并）
   const outPath = path.join(TMP,'今日.html');
@@ -579,12 +596,14 @@ function removeNoteEntry(block, key){
   const lost = MUST_HAVE.filter(k => tplHtml0.includes(k) && !outHtml.includes(k));
   if(lost.length){ console.error('[错] 生成结果丢失关键结构：'+lost.join(', ')+'（疑似读取到旧模板副本），已中止发布'); process.exit(1); }
   const existing = await getFile('index.html');
-  const payload = { message:'每日快照 '+new Date().toISOString().slice(0,10)+' · 扩库+'+autoCount, content, branch: BRANCH };
+  const payload = { message:(REBUILD?'轻量重建':'每日快照')+' '+new Date().toISOString().slice(0,10)+' · 扩库+'+autoCount, content, branch: BRANCH };
   if(existing && existing.sha) payload.sha = existing.sha;
   await gh('PUT','/repos/'+OWNER+'/'+REPO+'/contents/'+encodeURIComponent('index.html'), payload);
-  const tplSha = (await getFile('福州带娃周末出行.html')).sha;
-  await gh('PUT','/repos/'+OWNER+'/'+REPO+'/contents/'+encodeURIComponent('福州带娃周末出行.html'),
-    { message:'每日自动补全累计（'+autoCount+' 个）', content: b64enc(patched), branch: BRANCH, sha: tplSha });
+  if(!REBUILD){
+    const tplSha = (await getFile('福州带娃周末出行.html')).sha;
+    await gh('PUT','/repos/'+OWNER+'/'+REPO+'/contents/'+encodeURIComponent('福州带娃周末出行.html'),
+      { message:'每日自动补全累计（'+autoCount+' 个）', content: b64enc(patched), branch: BRANCH, sha: tplSha });
+  }
   const raw = 'https://raw.githubusercontent.com/'+OWNER+'/'+REPO+'/'+BRANCH+'/index.html';
   const view = 'https://'+OWNER.toLowerCase()+'.github.io/'+REPO+'/';
   console.log('[完成] 已发布：'+raw);
