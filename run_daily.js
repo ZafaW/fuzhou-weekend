@@ -130,6 +130,27 @@ function stemOf(n){
   st=st.replace(/(体育|休闲|郊野|城市|综合|文化|生态)$/,'');
   return st;
 }
+
+/* 同地异名 / 重复地点的「副名→主名」映射。
+   自动任务据此把候选里的副名归并到主名（不论有无坐标），并清理知识库内部重复。
+   发现新重复时在此追加一行即可（副名在前、主名在后），零误伤。
+   主名本身无需列出——aliasOf 对未映射名返回自身。 */
+const ALIAS = {
+  '农大沙滩':'沙滩公园',
+  '福州沙滩':'沙滩公园',
+  '福州沙滩公园':'沙滩公园',
+  '乌龙江沙滩':'沙滩公园',
+  '乌龙江沙滩公园':'沙滩公园',
+  '闽江沙滩':'沙滩公园',
+  '金山沙滩':'沙滩公园',
+  '沙滩公园(乌龙江)':'沙滩公园',
+};
+/* 名称归一：副名→主名；未映射名返回自身（即主名）。用于跨候选 / 跨知识库的等价判定 */
+function aliasOf(n){
+  const c=coreName(n);
+  return ALIAS[n] || ALIAS[c] || ALIAS[stemOf(n)] || n;
+}
+
 function xy(p){
   const parts=(p.location||'').split(',').map(Number);
   if(parts.length!==2 || isNaN(parts[0])||isNaN(parts[1])) return null;
@@ -207,34 +228,80 @@ function dedupeSamePlace(list){
     if(pIdx>=0){ dead[i]=true; folded.push({name:list[i].name, into:list[pIdx].name}); }
   }
 
-  // C) 同一场所的不同叫法：专名高度相近 + 类型词一致 + 距离≤1.5km（侯官沙滩/侯官村沙滩公园）
+  // C) 同场所不同叫法合并（增强版）。合并条件（任一满足即合并）：
+  //   1) 别名归一：副名→同一主名（不依赖坐标，彻底解决「农大沙滩=沙滩公园」类）
+  //   2) 近距同大类：滨海类≤0.5km / 其它同类≤0.3km（同一片沙滩的不同官方名必然极近）
+  //   3) 词根相近且≤1.5km（原逻辑，覆盖「侯官沙滩/侯官村沙滩公园」）
+  //   4) 地址锚点重叠（一方地址含另一方核心名，如「沙滩公园内」）
   const idxs=[...Array(n).keys()].filter(i=>!dead[i]);
   const used=new Set();
+  const seaRe=/沙滩|海滩|海滨|浴场/;
   for(let a=0;a<idxs.length;a++){
     if(used.has(a)) continue;
     const ia=idxs[a], pa=list[ia];
     const ka=kindOf(pa.name), sa=stemOf(pa.name), xa=pos[ia];
+    const aa=aliasOf(pa.name);
     const group=[ia];
-    if(ka && xa){
-      for(let b=a+1;b<idxs.length;b++){
-        if(used.has(b)) continue;
-        const ib=idxs[b], pb=list[ib], xb=pos[ib];
-        if(!xb) continue;
-        if(haversineKm(xa,xb)>1.5) continue;
-        if(!kinCompatible(ka, kindOf(pb.name))) continue;
-        const sb=stemOf(pb.name);
-        const stemClose=(sa&&sb)&&(sa===sb || (sa.length<sb.length? (sb.startsWith(sa)&&sb.length-sa.length<=2) : (sa.startsWith(sb)&&sa.length-sb.length<=2)));
-        if(!stemClose) continue;
-        group.push(ib); used.add(b);
-      }
+    for(let b=a+1;b<idxs.length;b++){
+      if(used.has(b)) continue;
+      const ib=idxs[b], pb=list[ib], xb=pos[ib];
+      // 1) 别名归一：副名指向同一主名 → 直接合并（即使无坐标）
+      if(aa===aliasOf(pb.name)){ group.push(ib); used.add(b); continue; }
+      if(!xb) continue;
+      const kb=kindOf(pb.name), sb=stemOf(pb.name);
+      if(!kinCompatible(ka,kb)) continue;
+      const d=haversineKm(xa,xb);
+      const D=(seaRe.test(ka)&&seaRe.test(kb))?0.5:0.3;
+      const stemClose=(sa&&sb)&&(sa===sb || (sa.length<sb.length? (sb.startsWith(sa)&&sb.length-sa.length<=2) : (sa.startsWith(sb)&&sa.length-sb.length<=2)));
+      const anchor=(addrOf(pa)&&addrOf(pb))&&(addrOf(pa).includes(coreName(pb.name))||addrOf(pb).includes(coreName(pa.name)));
+      if(d<=D || (stemClose&&d<=1.5) || anchor){ group.push(ib); used.add(b); }
     }
     used.add(a);
     if(group.length>1){
-      const main=pickMain(group.map(i=>list[i]));
+      // 优先选「主名」（自身即别名主、不在副名表），否则按评分/地址挑主条目
+      const mains=group.map(i=>list[i]);
+      const main=mains.find(m=>aliasOf(m.name)===m.name) || pickMain(mains);
       for(const i of group){ if(list[i]!==main){ dead[i]=true; folded.push({name:list[i].name, into:main.name}); } }
     }
   }
   return {list:list.filter((p,i)=>!dead[i]), folded};
+}
+
+/* 清理知识库（SPOT_NOTES）内部重复：按 ALIAS 把「副名」条目删掉，保留主名条目。
+   只在 ALIAS 已确认的范围内清理，零误伤；删除后做结构自检，失败则原样返回。 */
+function dedupeNotesHtml(html){
+  const m=html.match(/(const SPOT_NOTES=\{[\s\S]*?\n\};)/);
+  if(!m) return html;
+  const block=m[1];
+  const keys=[...block.matchAll(/^\s*'([^']+)':\{/gm)].map(x=>x[1]);
+  const have=new Set(keys);
+  const drops=keys.filter(k=>{ const a=aliasOf(k); return a && a!==k && have.has(a); });
+  if(!drops.length) return html;
+  let newBlock=block;
+  for(const k of drops){ newBlock=removeNoteEntry(newBlock,k); }
+  const cnt=(block.match(/^\s*'([^']+)':\{/gm)||[]).length;
+  const newCnt=(newBlock.match(/^\s*'([^']+)':\{/gm)||[]).length;
+  if(newCnt!==cnt-drops.length) return html;   // 删除异常，宁可不清理
+  console.log('[库内] 清理重复地点 '+drops.length+' 条（'+drops.join('、')+' → 主名）');
+  return html.replace(block, newBlock);
+}
+/* 从 SPOT_NOTES 块中删除名为 key 的整条（含其后逗号）。按大括号配对，遇异常返回原块。 */
+function removeNoteEntry(block, key){
+  const start=block.indexOf("'"+key+"':{");
+  if(start<0) return block;
+  const ob=block.indexOf('{', start);
+  if(ob<0) return block;
+  let depth=0, j=ob;
+  for(; j<block.length; j++){
+    if(block[j]==='{') depth++;
+    else if(block[j]==='}'){ depth--; if(depth===0){ j++; break; } }
+  }
+  if(depth!==0) return block;
+  let end=j;
+  const tail=block.slice(end);
+  const cm=tail.match(/^\s*,/);
+  if(cm) end+=cm[0].length;
+  return block.slice(0,start)+block.slice(end);
 }
 
 (async()=>{
@@ -326,14 +393,18 @@ function dedupeSamePlace(list){
     };
     for(const p of merged){
       const n = normName(p.name);
-      if(!n || have.has(n)) continue;
-      if(haveArr.some(h=>h.indexOf(n)>=0 || n.indexOf(h)>=0)) continue;   // 模糊去重
+      const na = aliasOf(p.name);                 // 别名归一后的主名
+      // 主名已在知识库 → 视为已存在，跳过（避免「农大沙滩」等副名被当成新地点补进库）
+      if(!n || have.has(n) || (na!==n && have.has(na))) continue;
+      const key = (na!==n) ? na : n;             // 入库时统一用主名
+      if(haveArr.some(h=>h.indexOf(key)>=0 || key.indexOf(h)>=0)) continue;   // 模糊去重（按归一主名）
       const addr = (p.address||'') + (p.name||'');
       if(haveArr.some(h=>addr.indexOf(h)>=0)){ skipSub++; continue; }      // 子设施（地址含父景区名）跳过
       const note = autoFill(p);
-      added.push({ n, u: note.u, warn: note.warn, food: note.food });
+      added.push({ n: key, u: note.u, warn: note.warn, food: note.food });
     }
     patched = patchSpotNotes(tplHtml0, added);
+    patched = dedupeNotesHtml(patched);   // 清理知识库内部重复（ALIAS 副名）
     // 自检：补全后 SPOT_NOTES 必须真的变长，否则说明写入失效（不能再静默当作成功）
     const cntNotes=(h)=>(h.match(/['"][^'"]+['"]:\s*\{\s*['"]?u['"]?\s*:/g)||[]).length;
     const beforeCnt=cntNotes(tplHtml0);
