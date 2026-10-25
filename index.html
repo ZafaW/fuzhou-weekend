@@ -1155,7 +1155,7 @@ window.openGuide=function(id){
                  :('<div class="guide-sec"><b>ℹ️ 独特看点</b><div class="guide-text">该地点暂未人工收录独特看点，以下为同类场所通用建议；欢迎在现场用「备注」记下你发现的独特之处。</div></div>');
   const warn=(sn?('<b>这里特有：</b>'+sn.warn+'<br><br>'):'')+buildWarn(p,months);
   const notes=loadGuideNotes(p.id).replace(/</g,'&lt;');
-  const autoBanner=sn&&sn._auto?(sn._llm?'<div class="callout" style="background:#eef7ff;border-left-color:#2f80ed">🤖 该地点攻略由 AI 基于高德信息自动优化；如需更精准可继续人工校准。</div>':'<div class="callout" style="background:#fff6ea;border-left-color:var(--accent)">⚠️ 该地点攻略为「每日自动生成」（基于高德信息），尚未人工精修；如有出入请以现场为准，也欢迎告诉我补全。</div>'):'';
+  const autoBanner=sn?(sn._llm?'<div class="callout" style="background:#eef7ff;border-left-color:#2f80ed">🤖 该地点攻略由 AI 基于高德信息自动优化；如需更精准可继续人工校准。</div>':(sn._auto?'<div class="callout" style="background:#fff6ea;border-left-color:var(--accent)">⚠️ 该地点攻略为「每日自动生成」（基于高德信息），尚未人工精修；如有出入请以现场为准，也欢迎告诉我补全。</div>':'')):'';
   const goneBanner=sn&&sn._gone?'<div class="callout" style="background:#fdecec;border-left-color:#e0533d">⚠️ 近期高德未检索到该地点（可能已停业/搬迁，或超出当前 80km 检索范围）。出行前请在高德上核实，避免白跑。</div>':'';
 
   const html=
@@ -1835,7 +1835,7 @@ function buildStrategy(p){
   const fullDay=/(天|1 天|全天)/.test(p.time||'');
   const isCached=!!loadStrategy(p.id);
   const sn=spotNote(p.name);
-  const autoBanner=sn&&sn._auto?(sn._llm?'<div class="callout" style="background:#eef7ff;border-left-color:#2f80ed">🤖 该地点攻略由 AI 基于高德信息自动优化；如需更精准可继续人工校准。</div>':'<div class="callout" style="background:#fff6ea;border-left-color:var(--accent)">⚠️ 该地点攻略为「每日自动生成」（基于高德信息），尚未人工精修；如有出入请以现场为准，也欢迎告诉我补全。</div>'):'';
+  const autoBanner=sn?(sn._llm?'<div class="callout" style="background:#eef7ff;border-left-color:#2f80ed">🤖 该地点攻略由 AI 基于高德信息自动优化；如需更精准可继续人工校准。</div>':(sn._auto?'<div class="callout" style="background:#fff6ea;border-left-color:var(--accent)">⚠️ 该地点攻略为「每日自动生成」（基于高德信息），尚未人工精修；如有出入请以现场为准，也欢迎告诉我补全。</div>':'')):'';
   const goneBanner=sn&&sn._gone?'<div class="callout" style="background:#fdecec;border-left-color:#e0533d">⚠️ 近期高德未检索到该地点（可能已停业/搬迁，或超出当前 80km 检索范围）。出行前请在高德上核实，避免白跑。</div>':'';
   const uniqSec=sn?('<div class="guide-sec"><b>🌟 此处的独特看点</b><div class="guide-text">'+sn.u+'</div></div><div class="guide-sec"><b>⚠️ 这里的雷点</b><div class="guide-text">'+sn.warn+'</div></div>')
                  :('<div class="guide-sec"><b>ℹ️ 独特看点</b><div class="guide-text">该地点暂未人工收录独特看点，以下为同类场所通用玩法；欢迎在现场用「备注」记下你发现的独特之处，会自动存进这份攻略。</div></div>');
