@@ -282,7 +282,7 @@
     <p>宝宝
       <input id="ageY" class="agein" type="number" min="0" max="6" value="1"> 岁
       <input id="ageM" class="agein" type="number" min="0" max="11" value="2"> 个月
-      · 起点默认农林大学，可在下方自定义
+      · 起点可自行设置，直接影响距离与推荐
     </p>
     <p id="ageNote"></p>
     <div id="ageTags">
@@ -327,7 +327,7 @@
     <h2>🗺️ 地图与起点</h2>
     <div class="startrow">
       <label>📍 起点</label>
-      <input id="startInput" value="福建农林大学金山校区" placeholder="输入起点，如：农林大学 / 东街口 / 宝龙">
+      <input id="startInput" value="" placeholder="先设置起点：输入小区/地标，或点「📡 我的位置」">
       <button id="locateBtn">定位并更新</button>
       <button class="ghost" id="geoBtn">📡 我的位置</button>
       <button class="pick" id="pickBtn">🗺️ 点图选起点</button>
@@ -493,7 +493,8 @@ let PLACES = SEED_PLACES.map(p=>({...p}));
 
 const sel={weather:null,time:null,baby:null,purpose:null,distance:null,onlyFit:null};
 let searchQ='';   // 清单关键词搜索（独立于智能筛选，可叠加）
-let start={lat:26.0872,lng:119.2329,name:"福建农林大学金山校区"};
+let start={lat:26.0872,lng:119.2329,name:"未设起点"};
+let startIsUserSet=false;
 let savedStarts=[];
 let sortMode='fit', pickMode=false;   // 默认按🍼适龄适配度降序排序
 let minKm=0, maxKm=30;   // 搜索距离区间(km)：默认 0–30；同时作为清单的硬显示窗口（窗口外不显示）；最大可设 80
@@ -1161,7 +1162,7 @@ window.openGuide=function(id){
   const html=
     goneBanner+autoBanner+
     '<div class="guide-h">📄 '+p.name+' · 带娃现场简介</div>'+
-    '<div class="guide-sub">'+p.sub+' ｜ 距'+start.name+'约 '+e.km+' km · 驾车约 '+e.min+' min ｜ 宝宝 '+age+'</div>'+
+    '<div class="guide-sub">'+p.sub+' ｜ '+(start.name&&start.name!=='未设起点'?('距'+start.name+'约 '+e.km+' km · 驾车约 '+e.min+' min'):'距起点约 '+e.km+' km · 驾车约 '+e.min+' min（未设起点，为参考值）')+' ｜ 宝宝 '+age+'</div>'+
     '<div class="guide-sec"><b>⭐ 评分</b> '+r+'</div>'+
     '<div class="guide-sec"><b>✨ 卖点</b> '+p.sell+'</div>'+
     '<div class="guide-sec"><b>🎯 可玩项目 & 怎么玩</b><ul class="guide-list">'+playList+'</ul></div>'+
@@ -1848,7 +1849,7 @@ function buildStrategy(p){
   const notes=loadGuideNotes(p.id).replace(/</g,'&lt;');
   return goneBanner+autoBanner+
     '<div class="guide-h">📋 '+p.name+' · 详细带娃攻略</div>'+
-    '<div class="guide-sub">'+p.sub+' ｜ 距'+start.name+'约 '+e.km+' km · 驾车约 '+e.min+' min ｜ 宝宝 '+age+(isCached?' ｜ 🗓️ 今日已生成（点「重新生成」可刷新）':'')+'</div>'+
+    '<div class="guide-sub">'+p.sub+' ｜ '+(start.name&&start.name!=='未设起点'?('距'+start.name+'约 '+e.km+' km · 驾车约 '+e.min+' min'):'距起点约 '+e.km+' km · 驾车约 '+e.min+' min（未设起点，为参考值）')+' ｜ 宝宝 '+age+(isCached?' ｜ 🗓️ 今日已生成（点「重新生成」可刷新）':'')+'</div>'+
     '<div class="guide-sec"><b>⭐ 评分</b> '+r+(p.address?(' ｜ '+p.address):'')+'</div>'+
     '<div class="guide-sec"><b>👶 适龄总评</b><div class="guide-text">'+fitTxt+'<br><br>'+ageStageNote(months)+'</div></div>'+
     '<div class="guide-sec"><b>📖 场景总览</b><div class="guide-text">'+S.intro+'</div></div>'+
@@ -2069,6 +2070,7 @@ async function locate(text){
 }
 function setStart(lat,lng,name,save=true){
   start={lat,lng,name};
+  startIsUserSet=true;
   if(save && !savedStarts.some(s=>s.name===name && Math.abs(s.lat-lat)<0.001 && Math.abs(s.lng-lng)<0.001)){
     savedStarts.push({lat,lng,name});
     saveStarts();
@@ -2097,7 +2099,12 @@ function renderSaved(){
   });
 }
 document.getElementById('saveCur').addEventListener('click',()=>{
-  const name=document.getElementById('startInput').value.trim()||start.name;
+  const typed=document.getElementById('startInput').value.trim();
+  if(!typed && (!start.name || start.name==='未设起点')){
+    document.getElementById('startInfo').textContent='请先输入起点名称，或点「📡 我的位置」定位后再保存';
+    return;
+  }
+  const name=typed||start.name;
   setStart(start.lat,start.lng,name);
   document.getElementById('startInfo').textContent='已保存当前起点到记忆列表：'+name;
 });
@@ -2131,24 +2138,23 @@ function loadState(){
   try{const st=JSON.parse(localStorage.getItem('fz_start')); if(st&&st.lat)start=st;}catch(e){}
   try{sortMode=localStorage.getItem('fz_sort')||'fit';}catch(e){}
   try{const sa=JSON.parse(localStorage.getItem('fz_starts')); if(Array.isArray(sa)&&sa.length)savedStarts=sa;}catch(e){}
-  if(savedStarts.length===0) savedStarts=[{lat:start.lat,lng:start.lng,name:start.name}];
+  // 只有用户真正设置过起点，才把当前起点并入「已记忆起点」；否则保持为空，避免出现「未设起点」这样的假记忆
+  if(savedStarts.length===0 && start.name && start.name!=='未设起点') savedStarts=[{lat:start.lat,lng:start.lng,name:start.name}];
   migrateBadDefault();   // 修正历史版本遗留的错误默认坐标（旧「农林大学(默认)」偏南约600米）
   try{const d=JSON.parse(localStorage.getItem('fz_dist')); if(d&&typeof d.min==='number'&&typeof d.max==='number'){minKm=Math.max(0,Math.min(80,d.min));maxKm=Math.max(minKm,Math.min(80,d.max));}}catch(e){}
   try{const kn=JSON.parse(localStorage.getItem('fz_knownNew')); if(Array.isArray(kn))knownNew=new Set(kn);}catch(e){}
 }
-// 历史版本默认起点坐标错误（lat26.0766,lng119.2397，在金山寺附近）；检测到旧错误坐标的农林大学记忆
-// 就地替换为正确坐标，并异步从云端删除对应旧条目，避免刷新后又合并回来。
+// 历史版本遗留：曾把「农林大学」错记为默认坐标（lat26.0766,lng119.2397，实际在金山寺附近，偏南约600米）。
+// 现在起点默认已改为空白、由用户自行设置，因此这里只做「清理」：把这条错误的默认记忆丢弃，
+// 不再改写成任何写死的地点名，避免又把某个特定学校强塞回用户起点。
 function migrateBadDefault(){
-  const GOOD={lat:26.0872,lng:119.2329,name:'福建农林大学金山校区'};
-  const isBad=s=>s && /农林/.test(s.name||'') && Math.abs(s.lat-26.0766)<0.012 && Math.abs(s.lng-119.2397)<0.012;
+  const isLegacyDefault=s=>s && /农林/.test(s.name||'') && Math.abs(s.lat-26.0766)<0.012 && Math.abs(s.lng-119.2397)<0.012;
   let fixed=false;
-  if(isBad(start)){ start={lat:GOOD.lat,lng:GOOD.lng,name:GOOD.name}; fixed=true; }
+  if(isLegacyDefault(start)){ start={lat:26.0872,lng:119.2329,name:'未设起点'}; fixed=true; }
   for(let i=savedStarts.length-1;i>=0;i--){
     const s=savedStarts[i];
-    if(isBad(s)){
-      if(!savedStarts.some(o=>o!==s && o.name===GOOD.name && Math.abs(o.lat-GOOD.lat)<0.001)) savedStarts[i]={lat:GOOD.lat,lng:GOOD.lng,name:GOOD.name};
-      else savedStarts.splice(i,1);
-      fixed=true;
+    if(isLegacyDefault(s)){
+      savedStarts.splice(i,1); fixed=true;
       try{
         fetch('https://a422398a5c853b9a6.app.workbuddy.host/api/delete-origin?sharecode=AOKZ35Y2P7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:s.name,lat:+(s.lat||26.0766).toFixed(6),lng:+(s.lng||119.2397).toFixed(6)})}).catch(()=>{});
       }catch(e){}
@@ -2156,7 +2162,7 @@ function migrateBadDefault(){
   }
   if(fixed){
     try{localStorage.setItem('fz_start',JSON.stringify(start));localStorage.setItem('fz_starts',JSON.stringify(savedStarts));}catch(e){}
-    setTimeout(()=>{ try{ document.getElementById('startInput').value=start.name; }catch(e){} },0);
+    setTimeout(()=>{ try{ if(start.name && start.name!=='未设起点') document.getElementById('startInput').value=start.name; }catch(e){} },0);
   }
 }
 function saveStarts(){try{localStorage.setItem('fz_starts',JSON.stringify(savedStarts));}catch(e){} try{syncOrigins();}catch(e){}}
@@ -2318,7 +2324,14 @@ autoFillAge();          // 年龄按出生日期自动填入
 applyAge();
 updateToday();          // 顶部日期
 document.querySelectorAll('.chips').forEach(g=>{const k=g.dataset.key; g.querySelectorAll('.chip').forEach(c=>{if(sel[k]===c.dataset.v)c.classList.add('on');});});
-document.getElementById('startInput').value=start.name;
+// 起点输入框：仅在用户已设置过起点时才回填；否则保持空，并提示先设起点
+if(start.name && start.name!=='未设起点'){
+  document.getElementById('startInput').value=start.name;
+}else{
+  document.getElementById('startInput').value='';
+  const si=document.getElementById('startInfo');
+  if(si){ si.textContent='👉 还没设起点：输入小区/地标后点「定位并更新」，或点「📡 我的位置」自动定位'; si.style.color='#e0533d'; }
+}
 try{ document.getElementById('amapKeyInput').value=(localStorage.getItem('amapKey')||''); }catch(e){}
 document.getElementById('minKmInput').value=minKm;
 document.getElementById('maxKmInput').value=maxKm;
