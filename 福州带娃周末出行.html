@@ -2140,7 +2140,7 @@ async function locate(text){
       try{
         const ifr=document.createElement('iframe');
         ifr.style.cssText='position:absolute;width:0;height:0;border:0;visibility:hidden;';
-        ifr.src='https://a96a9f9fb53eefdca.app.workbuddy.host/api/geocode?sharecode=NE43RUUQXT&cb=1&address='+encodeURIComponent(text);
+        ifr.src='https://a422398a5c853b9a6.app.workbuddy.host/api/geocode?sharecode=AOKZ35Y2P7&cb=1&address='+encodeURIComponent(text);
         const timer=setTimeout(()=>{ cleanup(); resolve(null); }, 8000);
         const onMsg=e=>{
           try{
@@ -2162,7 +2162,7 @@ async function locate(text){
     }
     // 通道2：fetch 走后端代理
     try{
-      const r=await fetch('https://a96a9f9fb53eefdca.app.workbuddy.host/api/geocode?sharecode=NE43RUUQXT&address='+encodeURIComponent(text));
+      const r=await fetch('https://a422398a5c853b9a6.app.workbuddy.host/api/geocode?sharecode=AOKZ35Y2P7&address='+encodeURIComponent(text));
       const j=await r.json();
       if(r.ok && j && j.ok && j.location){
         const [lng,lat]=j.location.split(',').map(Number); const w=gcj2wgs(lat,lng); setStart(w.lat,w.lng,text); return;
@@ -2287,7 +2287,7 @@ function loadAge(){try{const v=JSON.parse(localStorage.getItem('fz_age'));if(v){
 // 隐私模型：每个浏览器生成一串随机 uid（只存在你自己浏览器里），你的起点写入云端「按 uid 隔离」的私有槽位；
 // 页面只读取/写入自己的 uid，绝不拉取他人数据、也绝不列目录——所以你只能看到自己输入过的起点。
 // 每日任务持有管理员凭据，聚合全部 uid 的起点用于「按访客起点自动扩库」，但普通用户接口不返回他人数据。
-const SHARECODE='NE43RUUQXT';
+const SHARECODE='AOKZ35Y2P7';
 function myUid(){
   try{ const u=localStorage.getItem('fz_uid'); if(u&&/^[A-Za-z0-9_-]{8,}$/.test(u)) return u; }catch(e){}
   let u=''; try{ u=crypto.randomUUID(); }catch(e){ u='u'+Date.now().toString(36)+Math.random().toString(36).slice(2,10); }
@@ -2367,7 +2367,7 @@ function applyDistInputs(){
   mergeLatestPlaces();   // 区间即检索窗口，改动后按新区间重新生成当日清单
 }
 // 若把本 HTML 放到别处（如本地双击）想读云端服务，把下面改成云端 /api/today 完整地址
-const BACKEND_URL='https://a96a9f9fb53eefdca.app.workbuddy.host';   // 在线后端：清单检索走后端代理
+const BACKEND_URL='https://a422398a5c853b9a6.app.workbuddy.host';   // 在线后端：清单检索走后端代理
 document.getElementById('mergeBtn').addEventListener('click', async ()=>{
   setDS('正在刷新实时清单…');
   try{ const r=await fetch(BACKEND_URL||'/api/refresh'); if(r.ok){ const d=await r.json(); if(d&&Array.isArray(d.pois)&&d.pois.length){ applyBackend(d); return; } } }catch(e){}
