@@ -604,9 +604,13 @@ const server=http.createServer(async(req,res)=>{
     return;
   }
 
-  // 静态托管（防目录穿越）
+  // 静态托管（防目录穿越 + 敏感文件黑名单）
   let p = decodeURIComponent(u.pathname);
   if(p==='/' || p==='') p='/index.html';
+  // 凭据类文件一律不对外：静态托管默认会把目录里所有文件发出去（含 .txt / .git）
+  if(/(^|\/)(admin_pin|github_token)\.txt$/i.test(p) || /\.(env|pem|key|p12)$/i.test(p) || /(^|\/)\.git(\/|$)/.test(p)){
+    res.writeHead(403,{'Content-Type':'text/plain; charset=utf-8'}); res.end('403 Forbidden'); return;
+  }
   let fp = path.join(ROOT, p);
   if(!fp.startsWith(ROOT)){ res.writeHead(403,{'Content-Type':'text/plain; charset=utf-8'}); res.end('403 Forbidden'); return; }
   fs.stat(fp,(err,st)=>{
