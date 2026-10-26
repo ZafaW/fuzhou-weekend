@@ -2087,7 +2087,7 @@ async function locate(text){
       try{
         const ifr=document.createElement('iframe');
         ifr.style.cssText='position:absolute;width:0;height:0;border:0;visibility:hidden;';
-        ifr.src='https://a422398a5c853b9a6.app.workbuddy.host/api/geocode?sharecode=AOKZ35Y2P7&cb=1&address='+encodeURIComponent(text);
+        ifr.src='https://a96a9f9fb53eefdca.app.workbuddy.host/api/geocode?sharecode=NE43RUUQXT&cb=1&address='+encodeURIComponent(text);
         const timer=setTimeout(()=>{ cleanup(); resolve(null); }, 8000);
         const onMsg=e=>{
           try{
@@ -2109,7 +2109,7 @@ async function locate(text){
     }
     // 通道2：fetch 走后端代理
     try{
-      const r=await fetch('https://a422398a5c853b9a6.app.workbuddy.host/api/geocode?sharecode=AOKZ35Y2P7&address='+encodeURIComponent(text));
+      const r=await fetch('https://a96a9f9fb53eefdca.app.workbuddy.host/api/geocode?sharecode=NE43RUUQXT&address='+encodeURIComponent(text));
       const j=await r.json();
       if(r.ok && j && j.ok && j.location){
         const [lng,lat]=j.location.split(',').map(Number); const w=gcj2wgs(lat,lng); setStart(w.lat,w.lng,text); return;
@@ -2222,7 +2222,7 @@ function migrateBadDefault(){
     if(isLegacyDefault(s)){
       savedStarts.splice(i,1); fixed=true;
       try{
-        fetch('https://a422398a5c853b9a6.app.workbuddy.host/api/delete-origin?sharecode=AOKZ35Y2P7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:s.name,lat:+(s.lat||26.0766).toFixed(6),lng:+(s.lng||119.2397).toFixed(6)})}).catch(()=>{});
+        fetch('https://a96a9f9fb53eefdca.app.workbuddy.host/api/delete-origin?sharecode=NE43RUUQXT',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:s.name,lat:+(s.lat||26.0766).toFixed(6),lng:+(s.lng||119.2397).toFixed(6)})}).catch(()=>{});
       }catch(e){}
     }
   }
@@ -2238,14 +2238,15 @@ function loadAge(){try{const v=JSON.parse(localStorage.getItem('fz_age'));if(v){
 /* ===== 记录所有起点并同步到仓库（供每日按各起点 80km 扩库） ===== */
 // 起点同步通过「在线后端服务」完成：网页只发请求，令牌存在服务端，源码里不含任何令牌，
 // 所有用户打开页面保存起点即可自动写回仓库 origins.json，无需任何配置。
-const ORIGIN_API = 'https://a422398a5c853b9a6.app.workbuddy.host/api/save-origins?sharecode=AOKZ35Y2P7';
-const ORIGIN_GET = 'https://a422398a5c853b9a6.app.workbuddy.host/api/origins?sharecode=AOKZ35Y2P7';
-const ORIGIN_DEL = 'https://a422398a5c853b9a6.app.workbuddy.host/api/delete-origin?sharecode=AOKZ35Y2P7';
+const ORIGIN_API = 'https://a96a9f9fb53eefdca.app.workbuddy.host/api/save-origins?sharecode=NE43RUUQXT';
+const ORIGIN_GET = 'https://a96a9f9fb53eefdca.app.workbuddy.host/api/origins?sharecode=NE43RUUQXT';
+const ORIGIN_DEL = 'https://a96a9f9fb53eefdca.app.workbuddy.host/api/delete-origin?sharecode=NE43RUUQXT';
 async function cloudPost(url, body, tries){
   let lastErr;
   for(let i=0;i<(tries||3);i++){
     try{
       const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      if(r.status===401) return {ok:false,err:new Error('需要管理口令'),needPin:true};  // 云端起点已纳入鉴权，不再无谓重试
       if(r.ok){ const j=await r.json().catch(()=>({})); if(!j || j.ok!==false) return {ok:true,j}; }
       lastErr=new Error('HTTP '+(r&&r.status));
     }catch(e){ lastErr=e; }
@@ -2260,8 +2261,9 @@ async function deleteOrigin(name, lat, lng){
 async function syncOrigins(){
   const data = { origins: savedStarts.map(s=>({name:s.name, lng:+s.lng.toFixed(6), lat:+s.lat.toFixed(6)})) };
   if(!data.origins.length) return;
-  const {ok,j}=await cloudPost(ORIGIN_API,data);
+  const {ok,j,needPin}=await cloudPost(ORIGIN_API,data);
   if(ok) document.getElementById('startInfo').textContent='已把所有起点同步到每日检索（云端共 '+(j&&j.total)+' 个）';
+  else if(needPin) document.getElementById('startInfo').textContent='起点已存本机；写入云端需管理口令，请到数据台操作';
   else document.getElementById('startInfo').textContent='起点云端同步失败，本机已保存（已自动重试，可稍后刷新）';
 }
 // 页面加载时把云端已记录的起点合并进本机记忆（多设备 / 每日任务共享同一份起点）
@@ -2328,7 +2330,7 @@ function applyDistInputs(){
   mergeLatestPlaces();   // 区间即检索窗口，改动后按新区间重新生成当日清单
 }
 // 若把本 HTML 放到别处（如本地双击）想读云端服务，把下面改成云端 /api/today 完整地址
-const BACKEND_URL='https://a422398a5c853b9a6.app.workbuddy.host';   // 在线后端：清单检索走后端代理
+const BACKEND_URL='https://a96a9f9fb53eefdca.app.workbuddy.host';   // 在线后端：清单检索走后端代理
 document.getElementById('mergeBtn').addEventListener('click', async ()=>{
   setDS('正在刷新实时清单…');
   try{ const r=await fetch(BACKEND_URL||'/api/refresh'); if(r.ok){ const d=await r.json(); if(d&&Array.isArray(d.pois)&&d.pois.length){ applyBackend(d); return; } } }catch(e){}
