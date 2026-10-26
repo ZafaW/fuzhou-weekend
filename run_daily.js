@@ -252,7 +252,48 @@ function assertPageJsOk(html, label){
     catch(e){ console.error('[体检] '+label+' 内联脚本#'+i+' 语法错误，已中止发布（线上保留旧版）：'+e.message); process.exit(1); }
   });
   const m=html.match(/(const SPOT_NOTES=\{[\s\S]*?\n\};)/);
-  if(m){ try{ assertNotesBlockOk(m[1], null, label+' SPOT_NOTES'); }catch(e){ console.error('[体检] '+e.message+'，已中止发布'); process.exit(1); } }
+  if(m){
+    try{ assertNotesBlockOk(m[1], null, label+' SPOT_NOTES'); }catch(e){ console.error('[体检] '+e.message+'，已中止发布'); process.exit(1); }
+    // 严格 JSON 检查：条目值必须能被 JSON.parse（常规检查由 normalizeNotes 兜底，此处为最后确认）
+    const entryRe=/^\s*('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")\s*:\s*(\{.*\})\s*,?\s*$/;
+    let nonStrict=0;
+    for(const line of m[1].split('\n')){
+      const em=line.match(entryRe); if(!em) continue;
+      try{ JSON.parse(em[2]); }catch(e){ nonStrict++; }
+    }
+    if(nonStrict>0){ console.error('[体检] '+label+' SPOT_NOTES 仍有 '+nonStrict+' 条非严格 JSON，已中止发布'); process.exit(1); }
+  }
+}
+/* 格式守卫（常规检查）：把 SPOT_NOTES 中非严格 JSON 的条目统一为严格 JSON。
+   覆盖两类历史写法：单引号键（'动物园':）与 JS 字面量值（{u:'…',warn:'…'}）。
+   2026-10-26 已一次性清理 252 条；此处作为常规检查长期保留，防止旧格式再次混入。 */
+function normalizeNotes(html){
+  const m = html.match(/(const SPOT_NOTES=\{[\s\S]*?\n\};)/);
+  if(!m) return { html, changed:0 };
+  const block = m[1];
+  const entryRe = /^\s*('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")\s*:\s*(\{.*\})\s*,?\s*$/;
+  const lines = block.split('\n');
+  const beforeCount = countNoteEntries(block);
+  const out = []; let changed = 0, failed = 0;
+  for(const line of lines){
+    const mm = line.match(entryRe);
+    if(!mm){ out.push(line); continue; }
+    const rawKey = mm[1], q = rawKey[0];
+    let name = rawKey.slice(1,-1);
+    name = q === "'" ? name.replace(/\\'/g, "'") : name.replace(/\\"/g, '"');
+    let val;
+    try{ val = evalJsObj(mm[2]); }
+    catch(e){ failed++; console.warn('[格式] 条目值无法求值，保持原样：'+name); out.push(line); continue; }
+    const hadComma = /,\s*$/.test(line);
+    const nl = '  '+JSON.stringify(name)+': '+JSON.stringify(val)+(hadComma?',':'');
+    if(nl !== line) changed++;
+    out.push(nl);
+  }
+  if(!changed){ if(failed) console.warn('[格式] '+failed+' 条无法规范化，请人工检查'); return { html, changed:0 }; }
+  const newBlock = out.join('\n');
+  assertNotesBlockOk(newBlock, beforeCount, '格式守卫后 SPOT_NOTES');
+  console.log('[格式] 已统一 '+changed+' 条为非严格 JSON 的条目（键名/值统一双引号）');
+  return { html: html.replace(block, newBlock), changed };
 }
 async function freshenNotes(html, merged){
   const m=html.match(/(const SPOT_NOTES=\{[\s\S]*?\n\};)/);
@@ -624,6 +665,7 @@ function removeNoteEntry(block, key){
     }
     patched = patchSpotNotes(tplHtml0, added);
     patched = dedupeNotesHtml(patched);   // 清理知识库内部重复（ALIAS 副名）
+    patched = normalizeNotes(patched).html;   // 格式守卫：统一为严格 JSON（常规检查）
     patched = freshenNotes(patched, merged);   // 每日信息保鲜：刷新评分 + 保守标「可能失效」
     patched = await llmUpgradeNotes(patched);   // 大模型深度提质 _auto 条目（可选；无 key 自动降级）
     // 自检：补全后 SPOT_NOTES 必须真的变长，否则说明写入失效（不能再静默当作成功）
