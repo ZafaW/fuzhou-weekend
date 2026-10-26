@@ -207,6 +207,40 @@ function llmUpgradeOne(name, kind, addr, rating){
    命中（名称/别名一致）→ 写 _rating_now（最新评分）；
    未命中且「曾检索到过」（已有 _rating_now）→ 保守标 _gone（可能停业/搬迁/超范围）；
    未命中且无历史记录 → 不动（避免对远郊/冷门地点误报停业）。 */
+/* 重写 SPOT_NOTES 单行条目：务必保留原行尾逗号。
+   历史事故：直接用 '  name: {...}' 覆写会吞掉行尾逗号，使下一行条目被解析为
+   「字符串 + 字符串」→ 整段内联脚本 SyntaxError → 页面白屏。此处统一收口。 */
+function setNoteLine(lines, r, name, val){
+  const hadComma = /,\s*$/.test(lines[r]);
+  lines[r] = '  '+JSON.stringify(name)+': '+JSON.stringify(val)+(hadComma?',':'');
+}
+/* SPOT_NOTES 自检：条目数不变 + 每行仍是合法 JSON，任一不满足即抛错阻止发布 */
+function assertNotesBlockOk(block, expectCount, label){
+  const entryRe=/^\s*('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")\s*:\s*(\{.*\})\s*,?\s*$/;
+  let n=0, bad=0;
+  for(const line of block.split('\n')){
+    const mm=line.match(entryRe); if(!mm) continue;
+    n++;
+    try{ JSON.parse(mm[2]); }catch(e){ bad++; }
+  }
+  if(bad>0) throw new Error(label+' 自检失败：'+bad+' 条条目值不是合法 JSON');
+  if(expectCount!=null && n!==expectCount) throw new Error(label+' 自检失败：条目数 '+n+' ≠ 预期 '+expectCount);
+  return n;
+}
+/* 发布前语法体检：把页面所有内联 <script> 交给 V8 编译（只编译不执行）。
+   任一脚本有语法错误即中止发布，保留线上旧版本，避免白屏。 */
+function assertPageJsOk(html, label){
+  const vm=require('vm');
+  const blocks=[...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)]
+    .filter(m=>!/\ssrc\s*=/i.test(m[1]||'')).map(m=>m[2]).filter(s=>s.trim().length>0);
+  if(!blocks.length){ console.error('[体检] '+label+' 未找到任何内联脚本，已中止发布'); process.exit(1); }
+  blocks.forEach((code,i)=>{
+    try{ new vm.Script(code, {filename:label+'#inline'+i+'.js'}); }
+    catch(e){ console.error('[体检] '+label+' 内联脚本#'+i+' 语法错误，已中止发布（线上保留旧版）：'+e.message); process.exit(1); }
+  });
+  const m=html.match(/(const SPOT_NOTES=\{[\s\S]*?\n\};)/);
+  if(m){ try{ assertNotesBlockOk(m[1], null, label+' SPOT_NOTES'); }catch(e){ console.error('[体检] '+e.message+'，已中止发布'); process.exit(1); } }
+}
 async function freshenNotes(html, merged){
   const m=html.match(/(const SPOT_NOTES=\{[\s\S]*?\n\};)/);
   if(!m || !Array.isArray(merged)) return html;
@@ -234,16 +268,18 @@ async function freshenNotes(html, merged){
       const rating=(hit.biz_ext&&hit.biz_ext.rating)||'';
       const nv=Object.assign({},val,{_rating_now:rating});
       delete nv._gone; delete nv._gone_date;
-      if(JSON.stringify(nv)!==JSON.stringify(val)){ lines[r]='  '+JSON.stringify(name)+': '+JSON.stringify(nv); changed++; }
+      if(JSON.stringify(nv)!==JSON.stringify(val)){ setNoteLine(lines, r, name, nv); changed++; }
       refreshed++;
     }else if(val._rating_now){
       const nv=Object.assign({},val,{_gone:true,_gone_date:todayISO()});
-      if(JSON.stringify(nv)!==JSON.stringify(val)){ lines[r]='  '+JSON.stringify(name)+': '+JSON.stringify(nv); changed++; gone++; }
+      if(JSON.stringify(nv)!==JSON.stringify(val)){ setNoteLine(lines, r, name, nv); changed++; gone++; }
     }
   }
   if(!changed){ console.log('[保鲜] 无结构化字段变化'); return html; }
   console.log('[保鲜] 刷新 '+refreshed+' 个地点最新评分；'+gone+' 个今日未检索到已标「可能失效」；共 '+changed+' 条更新');
-  return html.replace(block, lines.join('\n'));
+  const newBlock = lines.join('\n');
+  assertNotesBlockOk(newBlock, rows.length, '保鲜后 SPOT_NOTES');   // 逗号/JSON 兜底自检
+  return html.replace(block, newBlock);
 }
 
 async function llmUpgradeNotes(html){
@@ -274,7 +310,7 @@ async function llmUpgradeNotes(html){
     const out=await llmUpgradeOne(t.name, kind, t.val._addr, t.val._rating);
     if(!out){ fail++; continue; }
     const newVal=Object.assign({}, t.val, {u:out.u, warn:out.warn, food:out.food, _auto:true, _llm:true, _llm_date:todayISO()});
-    lines[t.r]='  '+JSON.stringify(t.name)+': '+JSON.stringify(newVal);
+    setNoteLine(lines, t.r, t.name, newVal);
     ok++;
   }
   console.log('[LLM] 深度提质完成：成功 '+ok+' / 失败(降级保留原攻略) '+fail+(ok+fail>=LLM_MAX_PER_RUN?'（已达本轮上限，余下下次跑）':''));
@@ -595,6 +631,9 @@ function removeNoteEntry(block, key){
   const MUST_HAVE = ['id="tocDrawer"', 'data-act="guide"', 'id="mList"', 'id="mMore"', 'markNewBadges', 'renderMList'];
   const lost = MUST_HAVE.filter(k => tplHtml0.includes(k) && !outHtml.includes(k));
   if(lost.length){ console.error('[错] 生成结果丢失关键结构：'+lost.join(', ')+'（疑似读取到旧模板副本），已中止发布'); process.exit(1); }
+  // 语法体检（发布前最后一道闸）：内联脚本必须能被 JS 引擎编译，否则绝不覆盖线上 index.html
+  assertPageJsOk(outHtml, 'index.html');
+  console.log('[体检] 内联脚本语法校验通过，允许发布');
   const existing = await getFile('index.html');
   const payload = { message:(REBUILD?'轻量重建':'每日快照')+' '+new Date().toISOString().slice(0,10)+' · 扩库+'+autoCount, content, branch: BRANCH };
   if(existing && existing.sha) payload.sha = existing.sha;
