@@ -611,19 +611,28 @@ async function fetchDriveRoutes(){
     const org=o.lng+','+o.lat;
     const todo=PLACES.filter(p=>!(c[sk+'|'+p.id]&&Date.now()-c[sk+'|'+p.id].ts<DRIVE_TTL));
     let done=0;
+    let lastReqAt=0;
+    const sleep=ms=>new Promise(r=>setTimeout(r,ms));
     const worker=async()=>{
       while(todo.length){
         const p=todo.shift();
-        try{
-          const g=toMap(p.lat,p.lng);
-          const url='https://restapi.amap.com/v3/direction/driving?origin='+org+'&destination='+g.lng+','+g.lat+'&strategy=0&key='+encodeURIComponent(key);
-          const r=await fetch(url); const j=await r.json();
-          const path=j&&j.route&&j.route.paths&&j.route.paths[0];
-          if(path&&path.distance){
-            c[sk+'|'+p.id]={km:Math.round(path.distance/100)/10,min:Math.max(5,Math.round(path.duration/60)),ts:Date.now()};
-            done++; if(done%10===0) driveSave(c);
-          }
-        }catch(e){}
+        const g=toMap(p.lat,p.lng);
+        const url='https://restapi.amap.com/v3/direction/driving?origin='+org+'&destination='+g.lng+','+g.lat+'&strategy=0&key='+encodeURIComponent(key);
+        for(let a=0;a<3;a++){                       // 全局节流 420ms/次（高德个人key限3 QPS），限流退避重试
+          const gap=420-(Date.now()-lastReqAt);
+          if(gap>0) await sleep(gap);
+          lastReqAt=Date.now();
+          try{
+            const r=await fetch(url); const j=await r.json();
+            if(j&&j.infocode==='10021'){ await sleep(900); continue; }   // 被限流：退避后重试
+            const path=j&&j.route&&j.route.paths&&j.route.paths[0];
+            if(path&&path.distance){
+              c[sk+'|'+p.id]={km:Math.round(path.distance/100)/10,min:Math.max(5,Math.round(path.duration/60)),ts:Date.now()};
+              done++; if(done%10===0) driveSave(c);
+            }
+            break;
+          }catch(e){ if(a===2) break; }
+        }
       }
     };
     await Promise.all(Array.from({length:Math.min(4,todo.length)},worker));
