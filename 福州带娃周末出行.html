@@ -2272,9 +2272,6 @@ function migrateBadDefault(){
     const s=savedStarts[i];
     if(isLegacyDefault(s)){
       savedStarts.splice(i,1); fixed=true;
-      try{
-        fetch('https://a96a9f9fb53eefdca.app.workbuddy.host/api/delete-origin?sharecode=NE43RUUQXT',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:s.name,lat:+(s.lat||26.0766).toFixed(6),lng:+(s.lng||119.2397).toFixed(6)})}).catch(()=>{});
-      }catch(e){}
     }
   }
   if(fixed){
@@ -2282,13 +2279,44 @@ function migrateBadDefault(){
     setTimeout(()=>{ try{ if(start.name && start.name!=='未设起点') document.getElementById('startInput').value=start.name; }catch(e){} },0);
   }
 }
-function saveStarts(){try{localStorage.setItem('fz_starts',JSON.stringify(savedStarts));}catch(e){}}
+function saveStarts(){try{localStorage.setItem('fz_starts',JSON.stringify(savedStarts));}catch(e){} cloudSaveMyStarts();}
 function saveAge(){try{localStorage.setItem('fz_age',JSON.stringify({y:document.getElementById('ageY').value,m:document.getElementById('ageM').value}));}catch(e){}}
 function loadAge(){try{const v=JSON.parse(localStorage.getItem('fz_age'));if(v){document.getElementById('ageY').value=v.y;document.getElementById('ageM').value=v.m;}}catch(e){}}
 
-/* ===== 起点记忆（仅本机 localStorage，不上传、不与他人共享） ===== */
-// 隐私说明：每个人设置的起点只保存在自己的浏览器里，
-// 不会再同步到云端/仓库，打开页面也只看到自己保存的起点。
+/* ===== 起点记忆：本机(localStorage) + 个人云端槽位(uid 隔离) ===== */
+// 隐私模型：每个浏览器生成一串随机 uid（只存在你自己浏览器里），你的起点写入云端「按 uid 隔离」的私有槽位；
+// 页面只读取/写入自己的 uid，绝不拉取他人数据、也绝不列目录——所以你只能看到自己输入过的起点。
+// 每日任务持有管理员凭据，聚合全部 uid 的起点用于「按访客起点自动扩库」，但普通用户接口不返回他人数据。
+const SHARECODE='NE43RUUQXT';
+function myUid(){
+  try{ const u=localStorage.getItem('fz_uid'); if(u&&/^[A-Za-z0-9_-]{8,}$/.test(u)) return u; }catch(e){}
+  let u=''; try{ u=crypto.randomUUID(); }catch(e){ u='u'+Date.now().toString(36)+Math.random().toString(36).slice(2,10); }
+  try{ localStorage.setItem('fz_uid',u); }catch(e){}
+  return u;
+}
+// 把「仅自己」的起点上传到云端私有槽位（fire-and-forget；失败不影响本机使用）
+function cloudSaveMyStarts(){
+  const u=myUid();
+  try{
+    fetch(BACKEND_URL+'/api/save-my-start?sharecode='+SHARECODE,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({uid:u, starts:savedStarts.map(s=>({name:s.name,lat:+s.lat,lng:+s.lng}))})}).catch(()=>{});
+  }catch(e){}
+}
+// 拉取「仅自己」的云端起点并合并进本机记忆（跨设备也能看到自己设过的起点）
+async function cloudLoadMyStarts(){
+  const u=myUid();
+  try{
+    const r=await fetch(BACKEND_URL+'/api/my-starts?sharecode='+SHARECODE+'&uid='+encodeURIComponent(u));
+    if(!r.ok) return;
+    const d=await r.json();
+    if(d&&d.ok&&Array.isArray(d.starts)){
+      const have=new Set(savedStarts.map(s=>(s.name||'').trim()));
+      let added=0;
+      for(const s of d.starts){ if(s&&s.name&&!have.has(s.name.trim())){ have.add(s.name.trim()); savedStarts.push({name:s.name,lat:+s.lat,lng:+s.lng}); added++; } }
+      if(added) saveStarts();
+    }
+  }catch(e){ /* 离线/后端不可用：沿用本机记忆 */ }
+}
 
 /* ===== 筛选交互 ===== */
 document.querySelectorAll('.chips').forEach(g=>{
@@ -2416,6 +2444,8 @@ startMarker.setLatLng(toMap(start.lat,start.lng));
 renderSaved();
 renderHistory();
 (async()=>{
+  await cloudLoadMyStarts();   // 合并「仅自己」的云端起点（跨设备也能看到自己设过的）
+  renderSaved();
   if(EMBEDDED_SNAPSHOT && Array.isArray(EMBEDDED_SNAPSHOT) && EMBEDDED_SNAPSHOT.length){
     PLACES=[]; mergePOIs(EMBEDDED_SNAPSHOT);
     buildMarkers(); renderTable(); apply();
