@@ -356,7 +356,7 @@
       <span><i class="dot" style="background:#f2933c"></i>高德实时新发现</span>
       <span>💡 点击地图标记会弹出详情（不跳转表格）；弹窗内「📋 查看表格详情」可定位到表格行；点「🧭」或表格「🧭」可拉起高德导航</span>
     </div>
-    <div class="note" style="margin-top:8px;">说明：坐标为近似位置；车程按直线距离估算（市区约 2.5 min/km、远途约 1.6 min/km），实际以高德导航为准。</div>
+    <div class="note" style="margin-top:8px;">说明：距离与车程优先采用高德驾车路线规划（联网获取，本机缓存 7 天）；未获取到时按路网绕行系数估算（直线距离×1.35）。以实际导航为准。</div>
   </section>
 
   <!-- 每日热门 -->
@@ -586,7 +586,51 @@ function updateToday(){
 
 /* ===== 距离/车程估算（用 WGS 坐标，保证一致） ===== */
 function hav(A,B){const R=6371,r=Math.PI/180;const dLat=(B.lat-A.lat)*r,dLng=(B.lng-A.lng)*r;const la1=A.lat*r,la2=B.lat*r;const h=Math.sin(dLat/2)**2+Math.cos(la1)*Math.cos(la2)*Math.sin(dLng/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
-function est(p){const km=hav(start,p);const min=km<10?km*2.5:km*1.6;return{km:Math.round(km*10)/10,min:Math.max(5,Math.round(min))};}
+/* 驾车结果缓存：localStorage，按「起点(3位小数)|POI」存 7 天 */
+const DRIVE_TTL=7*864e5;
+let _driveCache=null;
+function driveCache(){ if(_driveCache===null){ try{_driveCache=JSON.parse(localStorage.getItem('fz_drive'))||{};}catch(e){_driveCache={};} } return _driveCache; }
+function driveSave(c){_driveCache=c;try{localStorage.setItem('fz_drive',JSON.stringify(c));}catch(e){}}
+function est(p){
+  const hit=driveCache()[(+start.lat).toFixed(3)+','+(+start.lng).toFixed(3)+'|'+p.id];
+  if(hit&&Date.now()-hit.ts<DRIVE_TTL) return {km:hit.km,min:hit.min,real:true};
+  const km=hav(start,p)*1.35;                 // 路网绕行系数：驾车距离≈直线×1.35
+  const min=km<15?km*2.7:km*1.6;              // 市区均速约22km/h，远郊约38km/h
+  return {km:Math.round(km*10)/10,min:Math.max(5,Math.round(min)),real:false};
+}
+/* 起点设置后，后台用高德路线规划 API 批量取真实驾车距离/时长（并发4，完成后刷新界面） */
+let driveFetching=false;
+async function fetchDriveRoutes(){
+  if(driveFetching) return;
+  if(!start||!start.name||start.name==='未设起点') return;
+  const key=getAmapKey(); if(!key) return;
+  driveFetching=true;
+  try{
+    const c=driveCache(); const sk=(+start.lat).toFixed(3)+','+(+start.lng).toFixed(3);
+    const o=toMap(start.lat,start.lng);
+    const org=o.lng+','+o.lat;
+    const todo=PLACES.filter(p=>!(c[sk+'|'+p.id]&&Date.now()-c[sk+'|'+p.id].ts<DRIVE_TTL));
+    let done=0;
+    const worker=async()=>{
+      while(todo.length){
+        const p=todo.shift();
+        try{
+          const g=toMap(p.lat,p.lng);
+          const url='https://restapi.amap.com/v3/direction/driving?origin='+org+'&destination='+g.lng+','+g.lat+'&strategy=0&key='+encodeURIComponent(key);
+          const r=await fetch(url); const j=await r.json();
+          const path=j&&j.route&&j.route.paths&&j.route.paths[0];
+          if(path&&path.distance){
+            c[sk+'|'+p.id]={km:Math.round(path.distance/100)/10,min:Math.max(5,Math.round(path.duration/60)),ts:Date.now()};
+            done++; if(done%10===0) driveSave(c);
+          }
+        }catch(e){}
+      }
+    };
+    await Promise.all(Array.from({length:Math.min(4,todo.length)},worker));
+    driveSave(c);
+    if(done>0){ updateDistances(); renderHot(); }   // 真实数据到位后统一刷新
+  }finally{ driveFetching=false; }
+}
 
 /* ===== 地图（高德瓦片，免密钥） ===== */
 const map=L.map('map',{scrollWheelZoom:false}).setView([26.0766,119.2397],13);
@@ -620,7 +664,7 @@ function popupHTML(p){
   const e=est(p);
   const r=p.rating?('★ '+p.rating+(p.cost?(' / 人均¥'+p.cost):'')):'—（高德未收录评分）';
   return '<div class="pop"><b>'+p.name+'</b> <span class="popsub">'+p.sub+'</span>'+
-    '<div class="poprow">距起点约 '+e.km+' km · 驾车约 '+e.min+' min</div>'+
+    '<div class="poprow">驾车 '+e.km+' km · 约 '+e.min+' min</div>'+
     '<div class="poprow"><b>⭐ 评分：</b>'+r+' <span class="note">（高德聚合，含大众点评/美团等）</span></div>'+
     '<div class="poprow"><b>玩：</b>'+p.play+'</div>'+
     '<div class="poprow"><b>卖点：</b>'+p.sell+'</div>'+
@@ -653,7 +697,7 @@ function updateDistances(){
   PLACES.forEach(p=>{
     const e=est(p); const tr=body.querySelector(`tr[data-id="${p.id}"]`);
     tr.dataset.km=e.km; tr.dataset.d=e.min<=10?'walk':e.min<=20?'near':'far';
-    tr.querySelector('.dist').innerHTML=`约 ${e.km} km<br><span class="note">驾车约 ${e.min} min</span>`;
+    tr.querySelector('.dist').innerHTML=(e.real?'驾车 ':'距起点约 ')+`${e.km} km<br><span class="note">驾车约 ${e.min} min${e.real?'（高德路线）':''}</span>`;
     markers[p.id].bindPopup(popupHTML(p));
   });
   applySort();
@@ -983,7 +1027,7 @@ function renderHot(){
   pick.slice(0,3).forEach((p,i)=>{
     const e=est(p);
     const c=document.createElement('div'); c.className='hotcard';
-    c.innerHTML=`<span class="rank">🔥 热门 ${i+1}</span><h4>${p.name}</h4><div class="why">${why(p)}</div><div class="meta">${p.sub} · 距起点约 ${e.km} km / 驾车约 ${e.min} min${p.rating?' · ⭐'+p.rating:''}</div><div class="hotops"><button class="navbtn" data-act="guide">📄 看详情</button><button class="navbtn" data-act="map">🗺️ 地图定位</button><button class="navbtn" data-act="nav">🧭 导航</button></div>`;
+    c.innerHTML=`<span class="rank">🔥 热门 ${i+1}</span><h4>${p.name}</h4><div class="why">${why(p)}</div><div class="meta">${p.sub} · 驾车 ${e.km} km / 约 ${e.min} min${p.rating?' · ⭐'+p.rating:''}</div><div class="hotops"><button class="navbtn" data-act="guide">📄 看详情</button><button class="navbtn" data-act="map">🗺️ 地图定位</button><button class="navbtn" data-act="nav">🧭 导航</button></div>`;
     // 卡片主体 → 弹出与地图标记一致的景点详情；按钮各自独立动作
     c.addEventListener('click',ev=>{
       const b=ev.target.closest('button');
@@ -1162,7 +1206,7 @@ window.openGuide=function(id){
   const html=
     goneBanner+autoBanner+
     '<div class="guide-h">📄 '+p.name+' · 带娃现场简介</div>'+
-    '<div class="guide-sub">'+p.sub+' ｜ '+(start.name&&start.name!=='未设起点'?('距'+start.name+'约 '+e.km+' km · 驾车约 '+e.min+' min'):'距起点约 '+e.km+' km · 驾车约 '+e.min+' min（未设起点，为参考值）')+' ｜ 宝宝 '+age+'</div>'+
+    '<div class="guide-sub">'+p.sub+' ｜ '+(start.name&&start.name!=='未设起点'?('驾车 '+e.km+' km（从'+start.name+'出发）· 约 '+e.min+' min'):'距起点约 '+e.km+' km · 驾车约 '+e.min+' min（未设起点，为参考值）')+' ｜ 宝宝 '+age+'</div>'+
     '<div class="guide-sec"><b>⭐ 评分</b> '+r+'</div>'+
     '<div class="guide-sec"><b>✨ 卖点</b> '+p.sell+'</div>'+
     '<div class="guide-sec"><b>🎯 可玩项目 & 怎么玩</b><ul class="guide-list">'+playList+'</ul></div>'+
@@ -1915,7 +1959,7 @@ function buildStrategy(p){
   const notes=loadGuideNotes(p.id).replace(/</g,'&lt;');
   return goneBanner+autoBanner+
     '<div class="guide-h">📋 '+p.name+' · 详细带娃攻略</div>'+
-    '<div class="guide-sub">'+p.sub+' ｜ '+(start.name&&start.name!=='未设起点'?('距'+start.name+'约 '+e.km+' km · 驾车约 '+e.min+' min'):'距起点约 '+e.km+' km · 驾车约 '+e.min+' min（未设起点，为参考值）')+' ｜ 宝宝 '+age+(isCached?' ｜ 🗓️ 今日已生成（点「重新生成」可刷新）':'')+'</div>'+
+    '<div class="guide-sub">'+p.sub+' ｜ '+(start.name&&start.name!=='未设起点'?('驾车 '+e.km+' km（从'+start.name+'出发）· 约 '+e.min+' min'):'距起点约 '+e.km+' km · 驾车约 '+e.min+' min（未设起点，为参考值）')+' ｜ 宝宝 '+age+(isCached?' ｜ 🗓️ 今日已生成（点「重新生成」可刷新）':'')+'</div>'+
     '<div class="guide-sec"><b>⭐ 评分</b> '+r+(p.address?(' ｜ '+p.address):'')+'</div>'+
     '<div class="guide-sec"><b>👶 适龄总评</b><div class="guide-text">'+fitTxt+'<br><br>'+ageStageNote(months)+'</div></div>'+
     '<div class="guide-sec"><b>📖 场景总览</b><div class="guide-text">'+S.intro+'</div></div>'+
@@ -2149,6 +2193,7 @@ function setStart(lat,lng,name,save=true){
   renderSaved();
   recomputeFit();          // 起点变了→距离变→适配度变
   updateDistances(); apply(); saveState();
+  fetchDriveRoutes();      // 后台拉取真实驾车距离/时长，完成后自动刷新列表
 }
 function renderSaved(){
   const box=document.getElementById('savedStarts'); box.innerHTML='';
@@ -2157,10 +2202,7 @@ function renderSaved(){
     el.innerHTML='<span class="sname">📍 '+s.name+'</span><span class="sdel" title="删除该起点">✕</span>';
     el.querySelector('.sname').addEventListener('click',()=>setStart(s.lat,s.lng,s.name));
     el.querySelector('.sdel').addEventListener('click',ev=>{ev.stopPropagation();const removed=savedStarts[idx];savedStarts.splice(idx,1);saveStarts();renderSaved();
-      document.getElementById('startInfo').textContent='已删除记忆起点：'+removed.name+'（正在同步云端…）';
-      deleteOrigin(removed.name, removed.lat, removed.lng).then(ok=>{
-        document.getElementById('startInfo').textContent=ok?'已删除并同步云端：'+removed.name:'已删除本机记忆（云端同步失败，可稍后重试）';
-      });});
+      document.getElementById('startInfo').textContent='已删除记忆起点：'+removed.name+'（仅本机）';});
     box.appendChild(el);
   });
 }
@@ -2231,55 +2273,13 @@ function migrateBadDefault(){
     setTimeout(()=>{ try{ if(start.name && start.name!=='未设起点') document.getElementById('startInput').value=start.name; }catch(e){} },0);
   }
 }
-function saveStarts(){try{localStorage.setItem('fz_starts',JSON.stringify(savedStarts));}catch(e){} try{syncOrigins();}catch(e){}}
+function saveStarts(){try{localStorage.setItem('fz_starts',JSON.stringify(savedStarts));}catch(e){}}
 function saveAge(){try{localStorage.setItem('fz_age',JSON.stringify({y:document.getElementById('ageY').value,m:document.getElementById('ageM').value}));}catch(e){}}
 function loadAge(){try{const v=JSON.parse(localStorage.getItem('fz_age'));if(v){document.getElementById('ageY').value=v.y;document.getElementById('ageM').value=v.m;}}catch(e){}}
 
-/* ===== 记录所有起点并同步到仓库（供每日按各起点 80km 扩库） ===== */
-// 起点同步通过「在线后端服务」完成：网页只发请求，令牌存在服务端，源码里不含任何令牌，
-// 所有用户打开页面保存起点即可自动写回仓库 origins.json，无需任何配置。
-const ORIGIN_API = 'https://a96a9f9fb53eefdca.app.workbuddy.host/api/save-origins?sharecode=NE43RUUQXT';
-const ORIGIN_GET = 'https://a96a9f9fb53eefdca.app.workbuddy.host/api/origins?sharecode=NE43RUUQXT';
-const ORIGIN_DEL = 'https://a96a9f9fb53eefdca.app.workbuddy.host/api/delete-origin?sharecode=NE43RUUQXT';
-async function cloudPost(url, body, tries){
-  let lastErr;
-  for(let i=0;i<(tries||3);i++){
-    try{
-      const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-      if(r.status===401) return {ok:false,err:new Error('需要管理口令'),needPin:true};  // 云端起点已纳入鉴权，不再无谓重试
-      if(r.ok){ const j=await r.json().catch(()=>({})); if(!j || j.ok!==false) return {ok:true,j}; }
-      lastErr=new Error('HTTP '+(r&&r.status));
-    }catch(e){ lastErr=e; }
-    if(i<(tries||3)-1) await new Promise(res=>setTimeout(res,800));
-  }
-  return {ok:false,err:lastErr};
-}
-async function deleteOrigin(name, lat, lng){
-  const {ok}=await cloudPost(ORIGIN_DEL,{name,lat:+lat.toFixed(6),lng:+lng.toFixed(6)});
-  return ok;
-}
-async function syncOrigins(){
-  const data = { origins: savedStarts.map(s=>({name:s.name, lng:+s.lng.toFixed(6), lat:+s.lat.toFixed(6)})) };
-  if(!data.origins.length) return;
-  const {ok,j,needPin}=await cloudPost(ORIGIN_API,data);
-  if(ok) document.getElementById('startInfo').textContent='已把所有起点同步到每日检索（云端共 '+(j&&j.total)+' 个）';
-  else if(needPin) document.getElementById('startInfo').textContent='起点已存本机；写入云端需管理口令，请到数据台操作';
-  else document.getElementById('startInfo').textContent='起点云端同步失败，本机已保存（已自动重试，可稍后刷新）';
-}
-// 页面加载时把云端已记录的起点合并进本机记忆（多设备 / 每日任务共享同一份起点）
-async function loadRepoOrigins(){
-  try{
-    const r=await fetch(ORIGIN_GET+'&t='+Date.now()); if(!r.ok) return;
-    const j=await r.json(); if(!j || !j.ok || !Array.isArray(j.origins)) return;
-    let changed=false;
-    for(const o of j.origins){
-      if(!savedStarts.some(s=>s.name===o.name && Math.abs(s.lat-o.lat)<0.001 && Math.abs(s.lng-o.lng)<0.001)){
-        savedStarts.push({name:o.name, lat:+o.lat, lng:+o.lng}); changed=true;
-      }
-    }
-    if(changed){ try{localStorage.setItem('fz_starts',JSON.stringify(savedStarts));}catch(e){} renderSaved(); }
-  }catch(e){}
-}
+/* ===== 起点记忆（仅本机 localStorage，不上传、不与他人共享） ===== */
+// 隐私说明：每个人设置的起点只保存在自己的浏览器里，
+// 不会再同步到云端/仓库，打开页面也只看到自己保存的起点。
 
 /* ===== 筛选交互 ===== */
 document.querySelectorAll('.chips').forEach(g=>{
@@ -2387,7 +2387,6 @@ function applyBackend(snap){
 
 /* ===== 初始化 ===== */
 loadState();
-loadRepoOrigins();      // 合并仓库里已记录的起点（多设备 / 每日任务共享）
 autoFillAge();          // 年龄按出生日期自动填入
 applyAge();
 updateToday();          // 顶部日期
@@ -2417,6 +2416,7 @@ renderHistory();
   else if(await loadBackendToday()){ /* 后端成功：已加载当日清单并标注来源 */ }
   else if(!restoreToday()){ mergeLatestPlaces(); }   // 无后端：优先恢复本地今日快照；无则触发浏览器端高德检索
   else { setDS('今日推荐已恢复（'+hotSeed()+'），可点「🔄 检索并更新」刷新'); }
+  fetchDriveRoutes();     // 上次会话设过起点：加载真实驾车距离（有 7 天本地缓存）
   scheduleDailyRefresh();
 })();
 document.getElementById('footer').textContent='出行前请确认景点开放时间与天气 · 祝周末愉快 👶';
