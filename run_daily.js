@@ -214,14 +214,15 @@ function setNoteLine(lines, r, name, val){
   const hadComma = /,\s*$/.test(lines[r]);
   lines[r] = '  '+JSON.stringify(name)+': '+JSON.stringify(val)+(hadComma?',':'');
 }
-/* SPOT_NOTES 自检：条目数不变 + 每行仍是合法 JSON，任一不满足即抛错阻止发布 */
+/* SPOT_NOTES 自检：条目数不变 + 每个条目值作为 JS 表达式可编译（兼容 {u:'...'} 这类非严格 JSON 的历史写法） */
 function assertNotesBlockOk(block, expectCount, label){
+  const vm=require('vm');
   const entryRe=/^\s*('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")\s*:\s*(\{.*\})\s*,?\s*$/;
   let n=0, bad=0;
   for(const line of block.split('\n')){
     const mm=line.match(entryRe); if(!mm) continue;
     n++;
-    try{ JSON.parse(mm[2]); }catch(e){ bad++; }
+    try{ new vm.Script('('+mm[2]+')'); }catch(e){ bad++; }
   }
   if(bad>0) throw new Error(label+' 自检失败：'+bad+' 条条目值不是合法 JSON');
   if(expectCount!=null && n!==expectCount) throw new Error(label+' 自检失败：条目数 '+n+' ≠ 预期 '+expectCount);
