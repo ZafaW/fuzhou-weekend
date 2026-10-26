@@ -114,6 +114,28 @@ function scheduleDaily(){
 
 // —— HTTP 服务 ——
 const MIME={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.jpg':'image/jpeg','.ico':'image/x-icon','.svg':'image/svg+xml'};
+// 关键：未设置时必须拒绝写操作（fail-closed）。
+// 历史缺陷：PIN 为空时 (header||'')==='' 恒成立，导致全站写接口实际无鉴权。
+// 注意：必须定义在 createServer 之前 —— 若放在路由块内，靠前的路由（/api/save-origins、
+// /api/delete-origin）会在 const 初始化前命中 TDZ，而 readPinFile 的 try/catch 会把这个
+// ReferenceError 吞成「空口令」，结果是连正确口令也被拒绝。
+const PIN_FILE = (process.env.ADMIN_PIN_FILE||'').trim() || path.join(process.cwd(), 'admin_pin.txt');
+function readPinFile(){ try{ return fs.readFileSync(PIN_FILE,'utf8').trim(); }catch(e){ return ''; } }
+function currentPin(){
+  const env = (process.env.ADMIN_PIN||'').trim();
+  if(env) return { pin:env, from:'env' };
+  const f = readPinFile();
+  if(f) return { pin:f, from:'file' };
+  return { pin:'', from:'none' };
+}
+function checkPin(r){ const p=currentPin().pin; return p!=='' && (r.headers['x-admin-pin']||'')===p; }
+const bootPin = currentPin();
+if(bootPin.from==='none'){
+  console.warn('[警告] 未设置管理口令（环境变量 ADMIN_PIN 或 '+PIN_FILE+'），管理接口将拒绝所有写操作；可调用 /api/set-pin 首次设置');
+}else{
+  console.log('[启动] 管理 PIN 来源：'+(bootPin.from==='env'?'环境变量 ADMIN_PIN':'文件 '+PIN_FILE));
+}
+
 const server=http.createServer(async(req,res)=>{
   const u=new URL(req.url,'http://localhost');
   if(u.pathname==='/api/today'){
@@ -301,24 +323,7 @@ const server=http.createServer(async(req,res)=>{
   // 鉴权：写操作需带请求头 x-admin-pin，取值由环境变量 ADMIN_PIN 提供（不写入仓库）
   // PIN 取值优先级：① 环境变量 ADMIN_PIN ② 服务端本地文件（默认 ./admin_pin.txt，不进仓库）
   // 改为每次请求实时读取，改口令无需重启服务；两者都没有时保持未设置状态（fail-closed）。
-  const PIN_FILE = (process.env.ADMIN_PIN_FILE||'').trim() || path.join(process.cwd(), 'admin_pin.txt');
-  function readPinFile(){ try{ return fs.readFileSync(PIN_FILE,'utf8').trim(); }catch(e){ return ''; } }
-  function currentPin(){
-    const env = (process.env.ADMIN_PIN||'').trim();
-    if(env) return { pin:env, from:'env' };
-    const f = readPinFile();
-    if(f) return { pin:f, from:'file' };
-    return { pin:'', from:'none' };
-  }
-  const bootPin = currentPin();
-  if(bootPin.from==='none'){
-    console.warn('[警告] 未设置 ADMIN_PIN（环境变量或 '+PIN_FILE+'），管理接口将拒绝所有写操作；可调用 /api/set-pin 首次设置');
-  }else{
-    console.log('[启动] 管理 PIN 来源：'+(bootPin.from==='env'?'环境变量 ADMIN_PIN':'文件 '+PIN_FILE));
-  }
-  // 关键：未设置时必须拒绝写操作（fail-closed）。
-  // 历史缺陷：PIN 为空时 (header||'')==='' 恒成立，导致全站写接口实际无鉴权。
-  function checkPin(r){ const p=currentPin().pin; return p!=='' && (r.headers['x-admin-pin']||'')===p; }
+  // 相关函数已上移到 createServer 之前定义（详见那里的注释）。
   function validDocPath(p){ return /^docs\/[^\/]+(\/[^\/]+)*\.(md|txt)$/i.test(p) && p.indexOf('..')<0 && p.length<200; }
   function send(obj, code){
     res.writeHead(code||200,{'Content-Type':'application/json; charset=utf-8','Access-Control-Allow-Origin':'*'});
