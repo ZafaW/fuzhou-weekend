@@ -287,12 +287,26 @@ const server=http.createServer(async(req,res)=>{
   }
   // ===== 管理接口：知识库 / 文档库（数据台 data.html 使用）=====
   // 鉴权：写操作需带请求头 x-admin-pin，取值由环境变量 ADMIN_PIN 提供（不写入仓库）
-  const ADMIN_PIN = (process.env.ADMIN_PIN || '').trim();
-  if(!ADMIN_PIN) console.warn('[警告] 未设置环境变量 ADMIN_PIN，管理接口将拒绝所有写操作');
-  // 关键：ADMIN_PIN 未设置时必须拒绝写操作（fail-closed）。
-  // 历史缺陷：ADMIN_PIN 为空时，(header||'')==='' 恒成立，导致全站写接口实际无鉴权
-  // （起点可被人任意增删、知识库可任意改写）。此处补上非空前置判断。
-  function checkPin(r){ return ADMIN_PIN !== '' && (r.headers['x-admin-pin']||'')===ADMIN_PIN; }
+  // PIN 取值优先级：① 环境变量 ADMIN_PIN ② 服务端本地文件（默认 ./admin_pin.txt，不进仓库）
+  // 改为每次请求实时读取，改口令无需重启服务；两者都没有时保持未设置状态（fail-closed）。
+  const PIN_FILE = (process.env.ADMIN_PIN_FILE||'').trim() || path.join(process.cwd(), 'admin_pin.txt');
+  function readPinFile(){ try{ return fs.readFileSync(PIN_FILE,'utf8').trim(); }catch(e){ return ''; } }
+  function currentPin(){
+    const env = (process.env.ADMIN_PIN||'').trim();
+    if(env) return { pin:env, from:'env' };
+    const f = readPinFile();
+    if(f) return { pin:f, from:'file' };
+    return { pin:'', from:'none' };
+  }
+  const bootPin = currentPin();
+  if(bootPin.from==='none'){
+    console.warn('[警告] 未设置 ADMIN_PIN（环境变量或 '+PIN_FILE+'），管理接口将拒绝所有写操作；可调用 /api/set-pin 首次设置');
+  }else{
+    console.log('[启动] 管理 PIN 来源：'+(bootPin.from==='env'?'环境变量 ADMIN_PIN':'文件 '+PIN_FILE));
+  }
+  // 关键：未设置时必须拒绝写操作（fail-closed）。
+  // 历史缺陷：PIN 为空时 (header||'')==='' 恒成立，导致全站写接口实际无鉴权。
+  function checkPin(r){ const p=currentPin().pin; return p!=='' && (r.headers['x-admin-pin']||'')===p; }
   function validDocPath(p){ return /^docs\/[^\/]+(\/[^\/]+)*\.(md|txt)$/i.test(p) && p.indexOf('..')<0 && p.length<200; }
   function send(obj, code){
     res.writeHead(code||200,{'Content-Type':'application/json; charset=utf-8','Access-Control-Allow-Origin':'*'});
@@ -355,9 +369,33 @@ const server=http.createServer(async(req,res)=>{
   if(u.pathname==='/api/verify-pin' && req.method==='POST'){
     const raw=await readBody();
     let j; try{ j=JSON.parse(raw||'{}'); }catch(e){ send({ok:false}); return; }
-    // 未注入 ADMIN_PIN 时明确报错，避免用户误以为「密码被改」
-    if(!ADMIN_PIN){ send({ ok:false, error:'服务端未设置环境变量 ADMIN_PIN，管理功能已锁定；请在部署环境注入 ADMIN_PIN 后重启服务' }); return; }
-    send({ ok: String(j.pin||'')===ADMIN_PIN });
+    const cur=currentPin();
+    if(cur.pin===''){ send({ ok:false, needSetup:true, error:'服务端尚未设置管理口令；请在服务器写入 '+PIN_FILE+' 或设置环境变量 ADMIN_PIN，也可调用 /api/set-pin 首次设置' }); return; }
+    send({ ok: String(j.pin||'')===cur.pin });
+    return;
+  }
+  // POST /api/set-pin {oldPin, newPin} —— 设置/修改管理口令
+  // 未设置口令时允许首次设置（此时系统本就裸奔，设上即变安全）；已设置则必须校验原口令。
+  // 仅文件模式可网页修改；环境变量模式需在部署环境调整。
+  if(u.pathname==='/api/set-pin' && req.method==='POST'){
+    const raw=await readBody();
+    let j={}; try{ j=JSON.parse(raw||'{}'); }catch(e){}
+    const cur=currentPin();
+    const oldPin=String(j.oldPin||''), newPin=String(j.newPin||'').trim();
+    if(!newPin || newPin.length<4){ send({ok:false,error:'新口令至少 4 位'}); return; }
+    if(cur.pin!=='' && oldPin!==cur.pin){ send({ok:false,error:'原口令不正确'}); return; }
+    if(cur.from==='env'){ send({ok:false,error:'当前口令来自环境变量 ADMIN_PIN，不支持网页修改；请取消该环境变量后改用文件模式'}); return; }
+    try{
+      fs.writeFileSync(PIN_FILE, newPin, { mode:0o600 });
+      console.log('[口令] 已更新（'+PIN_FILE+'）');
+      send({ ok:true, from:'file' });
+    }catch(e){ send({ok:false,error:'服务端无法写入口令文件：'+String(e.message||e)}); }
+    return;
+  }
+  // GET /api/pin-status —— 供前端判断是否需要首次设置（不泄露口令本身）
+  if(u.pathname==='/api/pin-status' && req.method==='GET'){
+    const cur=currentPin();
+    send({ ok:true, set:cur.pin!=='', from:cur.from });
     return;
   }
   // GET /api/kb —— 读取知识库（服务端代理，绕开手机直连 raw.githubusercontent 失败的问题）
