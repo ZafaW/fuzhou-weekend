@@ -10,6 +10,8 @@
 secrets.json
 config.local.js
 origins.local.json
+admin_pin.txt
+*.pin.txt
 
 # ===== 本地运行时产物 =====
 cache/
