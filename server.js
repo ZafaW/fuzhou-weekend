@@ -188,6 +188,7 @@ const server=http.createServer(async(req,res)=>{
     return;
   }
   if(u.pathname==='/api/save-origins' && req.method==='POST'){
+    if(!checkPin(req)){ deny(); return; }   // 起点写入必须鉴权（历史缺陷：该接口无鉴权，起点可被任意增删）
     let body='';
     req.on('data',d=>{ body+=d; if(body.length>100000) req.destroy(); });
     req.on('end', async ()=>{
@@ -218,6 +219,7 @@ const server=http.createServer(async(req,res)=>{
   }
   // 删除起点：按 name（或坐标近似）从 origins.json 移除（前端删除按钮调用，避免刷新后又被 loadRepoOrigins 合并回来）
   if(u.pathname==='/api/delete-origin' && req.method==='POST'){
+    if(!checkPin(req)){ deny(); return; }   // 起点删除必须鉴权（历史缺陷：该接口无鉴权）
     let body='';
     req.on('data',d=>{ body+=d; if(body.length>100000) req.destroy(); });
     req.on('end', async ()=>{
@@ -287,7 +289,10 @@ const server=http.createServer(async(req,res)=>{
   // 鉴权：写操作需带请求头 x-admin-pin，取值由环境变量 ADMIN_PIN 提供（不写入仓库）
   const ADMIN_PIN = (process.env.ADMIN_PIN || '').trim();
   if(!ADMIN_PIN) console.warn('[警告] 未设置环境变量 ADMIN_PIN，管理接口将拒绝所有写操作');
-  function checkPin(r){ return (r.headers['x-admin-pin']||'')===ADMIN_PIN; }
+  // 关键：ADMIN_PIN 未设置时必须拒绝写操作（fail-closed）。
+  // 历史缺陷：ADMIN_PIN 为空时，(header||'')==='' 恒成立，导致全站写接口实际无鉴权
+  // （起点可被人任意增删、知识库可任意改写）。此处补上非空前置判断。
+  function checkPin(r){ return ADMIN_PIN !== '' && (r.headers['x-admin-pin']||'')===ADMIN_PIN; }
   function validDocPath(p){ return /^docs\/[^\/]+(\/[^\/]+)*\.(md|txt)$/i.test(p) && p.indexOf('..')<0 && p.length<200; }
   function send(obj, code){
     res.writeHead(code||200,{'Content-Type':'application/json; charset=utf-8','Access-Control-Allow-Origin':'*'});
@@ -350,6 +355,8 @@ const server=http.createServer(async(req,res)=>{
   if(u.pathname==='/api/verify-pin' && req.method==='POST'){
     const raw=await readBody();
     let j; try{ j=JSON.parse(raw||'{}'); }catch(e){ send({ok:false}); return; }
+    // 未注入 ADMIN_PIN 时明确报错，避免用户误以为「密码被改」
+    if(!ADMIN_PIN){ send({ ok:false, error:'服务端未设置环境变量 ADMIN_PIN，管理功能已锁定；请在部署环境注入 ADMIN_PIN 后重启服务' }); return; }
     send({ ok: String(j.pin||'')===ADMIN_PIN });
     return;
   }
