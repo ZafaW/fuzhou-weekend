@@ -85,7 +85,13 @@
     <input id="lockPin" class="lockpin" type="password" placeholder="管理访问密码">
     <button class="btn primary" id="lockBtn">解锁进入</button>
     <div id="lockErr" class="err" style="margin-top:8px;text-align:center"></div>
-    <div class="note">忘记口令可在服务器设置环境变量 <code>ADMIN_PIN</code> 重置。</div>
+    <div id="setupBox" class="hidden" style="margin-top:14px;border-top:1px solid #e5e7eb;padding-top:12px">
+      <div class="sub" style="margin-bottom:8px">服务端尚未设置管理口令，请先设置一个（≥4 位）</div>
+      <input id="setupPin" class="lockpin" type="password" placeholder="新口令（≥4 位）">
+      <input id="setupPin2" class="lockpin" type="password" placeholder="再次输入新口令" style="margin-top:8px">
+      <button class="btn primary" id="setupBtn" style="width:100%;margin-top:12px">设置并进入</button>
+    </div>
+    <div class="note">忘记口令可在服务器写入 <code>admin_pin.txt</code>，或设置环境变量 <code>ADMIN_PIN</code> 后重启。</div>
   </div>
 </div>
 <div class="wrap hidden" id="appWrap">
@@ -96,6 +102,7 @@
     </div>
     <div class="row" style="flex:0">
       <a class="btn" href="./index.html">↩ 返回指南</a>
+      <button class="btn" id="changePinBtn">🔑 修改口令</button>
       <button class="btn" id="refresh">🔄 刷新</button>
     </div>
   </header>
@@ -518,15 +525,69 @@ async function tryLogin(){
       ADMIN_PIN=v; sessionStorage.setItem('fz_admin_pin',v);
       hideLock(); loadOrigins();
     }else{
-      err.textContent='密码错误，请重试';
+      if(r && r.needSetup){ showSetup(); err.textContent='服务端尚未设置口令'; }
+      else err.textContent=(r && r.error) ? r.error : '密码错误，请重试';
     }
   }catch(e){ err.textContent='验证失败：'+e.message; }
 }
 document.getElementById('lockBtn').addEventListener('click',tryLogin);
 document.getElementById('lockPin').addEventListener('keydown',e=>{ if(e.key==='Enter') tryLogin(); });
 
-// 初始加载：已登录直接进入，否则显示锁屏
-if(ADMIN_PIN){ hideLock(); loadOrigins(); } else { showLock(); }
+// —— 口令首次设置 / 修改 ——
+function showSetup(){
+  document.getElementById('setupBox').classList.remove('hidden');
+  document.getElementById('lockPin').classList.add('hidden');
+  document.getElementById('lockBtn').classList.add('hidden');
+}
+async function doSetup(){
+  const p1=(document.getElementById('setupPin').value||'').trim();
+  const p2=(document.getElementById('setupPin2').value||'').trim();
+  const err=document.getElementById('lockErr');
+  if(p1.length<4){ err.textContent='新口令至少 4 位'; return; }
+  if(p1!==p2){ err.textContent='两次输入不一致'; return; }
+  err.textContent='设置中…';
+  try{
+    const r=await fetch(API+'/api/set-pin'+SHARE,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({oldPin:'',newPin:p1})}).then(x=>x.json());
+    if(r&&r.ok){ ADMIN_PIN=p1; sessionStorage.setItem('fz_admin_pin',p1); hideLock(); loadOrigins(); }
+    else err.textContent=(r&&r.error)||'设置失败';
+  }catch(e){ err.textContent='设置失败：'+e.message; }
+}
+document.getElementById('setupBtn').addEventListener('click',doSetup);
+document.getElementById('setupPin2').addEventListener('keydown',e=>{ if(e.key==='Enter') doSetup(); });
+
+async function changePin(){
+  const np=prompt('输入新口令（≥4 位），留空取消：');
+  if(np===null) return;
+  const v=String(np).trim();
+  if(!v) return;
+  if(v.length<4){ alert('新口令至少 4 位'); return; }
+  const r=await fetch(API+'/api/set-pin'+SHARE,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({oldPin:ADMIN_PIN,newPin:v})}).then(x=>x.json()).catch(e=>({ok:false,error:e.message}));
+  if(r&&r.ok){ ADMIN_PIN=v; sessionStorage.setItem('fz_admin_pin',v); alert('口令已更新，请牢记新口令'); }
+  else alert('修改失败：'+((r&&r.error)||'未知错误'));
+}
+document.getElementById('changePinBtn').addEventListener('click',changePin);
+
+// 进入前先校验已保存的口令是否仍有效（服务端重启/改口令后可及时发现）
+async function verifySession(){
+  try{
+    const r=await fetch(API+'/api/verify-pin'+SHARE,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin:ADMIN_PIN})}).then(x=>x.json());
+    if(r&&r.ok){ hideLock(); loadOrigins(); return; }
+    sessionStorage.removeItem('fz_admin_pin'); ADMIN_PIN=''; showLock();
+    if(r&&r.needSetup) showSetup();
+  }catch(e){ hideLock(); loadOrigins(); }
+}
+
+// 初始加载：已登录需校验后进入，否则显示锁屏；服务端未设口令则引导首次设置
+(async function(){
+  if(ADMIN_PIN){ await verifySession(); }
+  else{
+    showLock();
+    try{
+      const s=await fetch(API+'/api/pin-status'+SHARE).then(x=>x.json());
+      if(s && s.set===false) showSetup();
+    }catch(e){}
+  }
+})();
 </script>
 </body>
 </html>
