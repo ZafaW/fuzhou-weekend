@@ -511,6 +511,30 @@ function removeNoteEntry(block, key){
   }
   console.log('[起点] 共 '+origins.length+' 个：'+origins.map(o=>o.name).join('、'));
 
+  // 2b) 起点守卫：外部「起点同步（后端自动）」是覆盖式写入，每次只写本次那一个起点，
+  //     会把其余起点整条删掉（历史事故：福建农林大学金山校区被删，只剩 1 个起点）。
+  //     此处按基线起点做自愈补回，保证每日检索范围不缩水。可用 ORIGIN_GUARD=0 关闭。
+  if(process.env.ORIGIN_GUARD !== '0'){
+    const BASELINE = [
+      { name:'福建农林大学金山校区', lng:119.2329,   lat:26.0872   },
+      { name:'融侨旗山别墅',         lng:119.212191, lat:25.981606 }
+    ];
+    const have = new Set((origins||[]).map(o=>String(o.name||'').trim()));
+    const missing = BASELINE.filter(b=>!have.has(b.name));
+    if(missing.length){
+      console.warn('[起点守卫] 检测到基线起点缺失：'+missing.map(m=>m.name).join('、')+'（疑似被覆盖式同步删除），已自动补回');
+      const mergedOrigins = (origins||[]).filter(o=>String(o.name||'').trim()).concat(missing);
+      try{
+        const body = { message:'起点守卫：自动补回缺失基线起点（'+missing.map(m=>m.name).join('、')+'）',
+                       content: b64enc(JSON.stringify({origins:mergedOrigins}, null, 2)), branch: BRANCH };
+        try{ const cur = await getFile('origins.json'); if(cur && cur.sha) body.sha = cur.sha; }catch(e){}
+        await gh('PUT','/repos/'+OWNER+'/'+REPO+'/contents/'+encodeURIComponent('origins.json'), body);
+        origins = mergedOrigins;
+        console.log('[起点守卫] origins.json 已补回，当前 '+origins.length+' 个：'+origins.map(o=>o.name).join('、'));
+      }catch(e){ console.warn('[起点守卫] 补回失败（本次按现有起点检索）：', e.message); }
+    }
+  }
+
   // 3) 每日确认：围绕每个起点 80km 检索，合并去重（REBUILD=1 时跳过高德，复用已发布快照）
   const REBUILD = process.env.REBUILD === '1';
   let merged = [];
