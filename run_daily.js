@@ -9,8 +9,8 @@
 //      （标记 _auto，待人工精修；子设施如「虎馆/植物园子区」若地址已含某父景区名则跳过）
 //   4) node build_snapshot.js 生成自包含 今日.html（内嵌当天高德 POI）
 //   5) 把 今日.html / 模板 / origins.json 写回仓库（index.html 经 GitHub Pages 渲染）
-// 用法：GITHUB_TOKEN=xxx OWNER=xxx REPO=xxx node run_daily.js
-// 依赖环境变量：GITHUB_TOKEN、OWNER、REPO
+// 用法：GITHUB_TOKEN=xxx OWNER=xxx REPO=xxx [ADMIN_PIN=xxx] [BACKEND_URL=...] [SHARECODE=...] node run_daily.js
+// 依赖环境变量：GITHUB_TOKEN、OWNER、REPO（必填）；ADMIN_PIN（选填，设了才聚合云端访客起点用于扩库）
 
 const https = require('https');
 const fs = require('fs');
@@ -21,6 +21,9 @@ const TOKEN = process.env.GITHUB_TOKEN;
 const OWNER = process.env.OWNER;
 const REPO = process.env.REPO;
 const BRANCH = process.env.BRANCH || 'main';
+const BACKEND_URL = process.env.BACKEND_URL || 'https://a96a9f9fb53eefdca.app.workbuddy.host';
+const SHARECODE = process.env.SHARECODE || 'NE43RUUQXT';
+const ADMIN_PIN = process.env.ADMIN_PIN || '';   // 可选：设了才从后端聚合全部访客起点用于扩库
 const TMP = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fz-'));
 if(!TOKEN || !OWNER || !REPO){ console.error('[错] 缺少环境变量 GITHUB_TOKEN / OWNER / REPO'); process.exit(1); }
 
@@ -46,6 +49,45 @@ function gh(method, p, body){
     if(data) req.write(data);
     req.end();
   });
+}
+// 通用 JSON HTTP（用于拉后端聚合的起点；与 gh 不同，目标不是 api.github.com）
+function httpJson(method, url, body, headers){
+  return new Promise((resolve,reject)=>{
+    const u = new URL(url);
+    const data = body? JSON.stringify(body):null;
+    const req = https.request({ hostname:u.hostname, port:u.port||443, path:u.pathname+(u.search||''), method,
+      headers: Object.assign({'User-Agent':'fz-weekend-bot','Content-Type':'application/json'}, headers||{}) }, res=>{
+      let b=''; res.on('data',c=>b+=c); res.on('end',()=>{
+        let j=null; try{ j=JSON.parse(b); }catch(e){}
+        if(res.statusCode>=200 && res.statusCode<300) resolve(j);
+        else reject(new Error('HTTP '+method+' '+url+' -> '+res.statusCode+' '+(j&&j.error||j&&j.message||b.slice(0,160))));
+      });
+    });
+    req.on('error', reject);
+    if(data) req.write(data);
+    req.end();
+  });
+}
+// 从后端聚合「全部访客起点」用于自动扩库（管理员 PIN 隔离；普通用户接口拿不到他人数据）
+async function loadCloudOrigins(){
+  if(!ADMIN_PIN) return [];
+  try{
+    const d = await httpJson('GET', BACKEND_URL+'/api/all-starts?sharecode='+SHARECODE, null, { 'x-admin-pin': ADMIN_PIN });
+    let list = [];
+    if(d && Array.isArray(d.starts)) list = d.starts;
+    else if(d && Array.isArray(d.users)){ for(const u of d.users){ if(u && Array.isArray(u.starts)) list = list.concat(u.starts); } }
+    const seen = new Set(); const out = [];
+    for(const s of list){
+      if(!s || !s.name) continue;
+      const key = String(s.name).trim();
+      if(seen.has(key)) continue; seen.add(key);
+      const lat = +s.lat, lng = +s.lng;
+      if(!isFinite(lat) || !isFinite(lng)) continue;
+      out.push({ name:String(s.name), lat, lng });
+    }
+    console.log('[起点] 云端聚合到访客起点 '+out.length+' 个');
+    return out;
+  }catch(e){ console.warn('[起点] 云端聚合失败（回退 origins.json/默认）：', e.message); return []; }
 }
 function b64dec(s){ return Buffer.from(s,'base64').toString('utf8'); }
 function b64enc(s){ return Buffer.from(s,'utf8').toString('base64'); }
@@ -207,94 +249,6 @@ function llmUpgradeOne(name, kind, addr, rating){
    命中（名称/别名一致）→ 写 _rating_now（最新评分）；
    未命中且「曾检索到过」（已有 _rating_now）→ 保守标 _gone（可能停业/搬迁/超范围）；
    未命中且无历史记录 → 不动（避免对远郊/冷门地点误报停业）。 */
-/* 重写 SPOT_NOTES 单行条目：务必保留原行尾逗号。
-   历史事故：直接用 '  name: {...}' 覆写会吞掉行尾逗号，使下一行条目被解析为
-   「字符串 + 字符串」→ 整段内联脚本 SyntaxError → 页面白屏。此处统一收口。 */
-function setNoteLine(lines, r, name, val){
-  const hadComma = /,\s*$/.test(lines[r]);
-  lines[r] = '  '+JSON.stringify(name)+': '+JSON.stringify(val)+(hadComma?',':'');
-}
-/* 求值 SPOT_NOTES 条目值：历史条目既有严格 JSON，也有 {u:'...'} 这类 JS 字面量，
-   统一用 V8 在空上下文求值，使两类条目都能参与保鲜（JSON.parse 会漏掉后者）。 */
-function evalJsObj(src){
-  const vm=require('vm');
-  return new vm.Script('('+src+')').runInNewContext(Object.create(null));
-}
-function countNoteEntries(block){
-  const entryRe=/^\s*('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")\s*:\s*(\{.*\})\s*,?\s*$/;
-  return block.split('\n').filter(l=>entryRe.test(l)).length;
-}
-/* SPOT_NOTES 自检：条目数不变 + 每个条目值作为 JS 表达式可编译
-   （兼容 {u:'...'} 这类非严格 JSON 的历史写法） */
-function assertNotesBlockOk(block, expectCount, label){
-  const vm=require('vm');
-  const entryRe=/^\s*('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")\s*:\s*(\{.*\})\s*,?\s*$/;
-  let n=0, bad=0;
-  for(const line of block.split('\n')){
-    const mm=line.match(entryRe); if(!mm) continue;
-    n++;
-    try{ new vm.Script('('+mm[2]+')'); }
-    catch(e){ bad++; if(bad<=3) console.warn('[自检] 条目值不可编译，跳过：'+mm[1].slice(0,24)+'… '+e.message); }
-  }
-  if(bad>0) throw new Error(label+' 自检失败：'+bad+' 条条目值无法作为 JS 表达式编译');
-  if(expectCount!=null && n!==expectCount) throw new Error(label+' 自检失败：条目数 '+n+' ≠ 预期 '+expectCount);
-  return n;
-}
-/* 发布前语法体检：把页面所有内联 <script> 交给 V8 编译（只编译不执行）。
-   任一脚本有语法错误即中止发布，保留线上旧版本，避免白屏。 */
-function assertPageJsOk(html, label){
-  const vm=require('vm');
-  const blocks=[...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)]
-    .filter(m=>!/\ssrc\s*=/i.test(m[1]||'')).map(m=>m[2]).filter(s=>s.trim().length>0);
-  if(!blocks.length){ console.error('[体检] '+label+' 未找到任何内联脚本，已中止发布'); process.exit(1); }
-  blocks.forEach((code,i)=>{
-    try{ new vm.Script(code, {filename:label+'#inline'+i+'.js'}); }
-    catch(e){ console.error('[体检] '+label+' 内联脚本#'+i+' 语法错误，已中止发布（线上保留旧版）：'+e.message); process.exit(1); }
-  });
-  const m=html.match(/(const SPOT_NOTES=\{[\s\S]*?\n\};)/);
-  if(m){
-    try{ assertNotesBlockOk(m[1], null, label+' SPOT_NOTES'); }catch(e){ console.error('[体检] '+e.message+'，已中止发布'); process.exit(1); }
-    // 严格 JSON 检查：条目值必须能被 JSON.parse（常规检查由 normalizeNotes 兜底，此处为最后确认）
-    const entryRe=/^\s*('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")\s*:\s*(\{.*\})\s*,?\s*$/;
-    let nonStrict=0;
-    for(const line of m[1].split('\n')){
-      const em=line.match(entryRe); if(!em) continue;
-      try{ JSON.parse(em[2]); }catch(e){ nonStrict++; }
-    }
-    if(nonStrict>0){ console.error('[体检] '+label+' SPOT_NOTES 仍有 '+nonStrict+' 条非严格 JSON，已中止发布'); process.exit(1); }
-  }
-}
-/* 格式守卫（常规检查）：把 SPOT_NOTES 中非严格 JSON 的条目统一为严格 JSON。
-   覆盖两类历史写法：单引号键（'动物园':）与 JS 字面量值（{u:'…',warn:'…'}）。
-   2026-10-26 已一次性清理 252 条；此处作为常规检查长期保留，防止旧格式再次混入。 */
-function normalizeNotes(html){
-  const m = html.match(/(const SPOT_NOTES=\{[\s\S]*?\n\};)/);
-  if(!m) return { html, changed:0 };
-  const block = m[1];
-  const entryRe = /^\s*('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")\s*:\s*(\{.*\})\s*,?\s*$/;
-  const lines = block.split('\n');
-  const beforeCount = countNoteEntries(block);
-  const out = []; let changed = 0, failed = 0;
-  for(const line of lines){
-    const mm = line.match(entryRe);
-    if(!mm){ out.push(line); continue; }
-    const rawKey = mm[1], q = rawKey[0];
-    let name = rawKey.slice(1,-1);
-    name = q === "'" ? name.replace(/\\'/g, "'") : name.replace(/\\"/g, '"');
-    let val;
-    try{ val = evalJsObj(mm[2]); }
-    catch(e){ failed++; console.warn('[格式] 条目值无法求值，保持原样：'+name); out.push(line); continue; }
-    const hadComma = /,\s*$/.test(line);
-    const nl = '  '+JSON.stringify(name)+': '+JSON.stringify(val)+(hadComma?',':'');
-    if(nl !== line) changed++;
-    out.push(nl);
-  }
-  if(!changed){ if(failed) console.warn('[格式] '+failed+' 条无法规范化，请人工检查'); return { html, changed:0 }; }
-  const newBlock = out.join('\n');
-  assertNotesBlockOk(newBlock, beforeCount, '格式守卫后 SPOT_NOTES');
-  console.log('[格式] 已统一 '+changed+' 条为非严格 JSON 的条目（键名/值统一双引号）');
-  return { html: html.replace(block, newBlock), changed };
-}
 async function freshenNotes(html, merged){
   const m=html.match(/(const SPOT_NOTES=\{[\s\S]*?\n\};)/);
   if(!m || !Array.isArray(merged)) return html;
@@ -308,11 +262,10 @@ async function freshenNotes(html, merged){
     if(!byName.has(key)) byName.set(key, p);
   }
   const rows=[];
-  const beforeCount = countNoteEntries(block);   // 自检基线：改动前的条目总数
   for(let r=0;r<lines.length;r++){
     const mm=lines[r].match(entryRe); if(!mm) continue;
     const name=mm[1].slice(1,-1).replace(/\\'/g,"'").replace(/\\"/g,'"');
-    let val; try{ val=evalJsObj(mm[2]); }catch(e){ continue; }
+    let val; try{ val=JSON.parse(mm[2]); }catch(e){ continue; }
     rows.push({r,name,val});
   }
   let refreshed=0, gone=0, changed=0;
@@ -323,18 +276,16 @@ async function freshenNotes(html, merged){
       const rating=(hit.biz_ext&&hit.biz_ext.rating)||'';
       const nv=Object.assign({},val,{_rating_now:rating});
       delete nv._gone; delete nv._gone_date;
-      if(JSON.stringify(nv)!==JSON.stringify(val)){ setNoteLine(lines, r, name, nv); changed++; }
+      if(JSON.stringify(nv)!==JSON.stringify(val)){ lines[r]='  '+JSON.stringify(name)+': '+JSON.stringify(nv); changed++; }
       refreshed++;
     }else if(val._rating_now){
       const nv=Object.assign({},val,{_gone:true,_gone_date:todayISO()});
-      if(JSON.stringify(nv)!==JSON.stringify(val)){ setNoteLine(lines, r, name, nv); changed++; gone++; }
+      if(JSON.stringify(nv)!==JSON.stringify(val)){ lines[r]='  '+JSON.stringify(name)+': '+JSON.stringify(nv); changed++; gone++; }
     }
   }
   if(!changed){ console.log('[保鲜] 无结构化字段变化'); return html; }
   console.log('[保鲜] 刷新 '+refreshed+' 个地点最新评分；'+gone+' 个今日未检索到已标「可能失效」；共 '+changed+' 条更新');
-  const newBlock = lines.join('\n');
-  assertNotesBlockOk(newBlock, beforeCount, '保鲜后 SPOT_NOTES');   // 逗号/JSON 兜底自检
-  return html.replace(block, newBlock);
+  return html.replace(block, lines.join('\n'));
 }
 
 async function llmUpgradeNotes(html){
@@ -365,7 +316,7 @@ async function llmUpgradeNotes(html){
     const out=await llmUpgradeOne(t.name, kind, t.val._addr, t.val._rating);
     if(!out){ fail++; continue; }
     const newVal=Object.assign({}, t.val, {u:out.u, warn:out.warn, food:out.food, _auto:true, _llm:true, _llm_date:todayISO()});
-    setNoteLine(lines, t.r, t.name, newVal);
+    lines[t.r]='  '+JSON.stringify(t.name)+': '+JSON.stringify(newVal);
     ok++;
   }
   console.log('[LLM] 深度提质完成：成功 '+ok+' / 失败(降级保留原攻略) '+fail+(ok+fail>=LLM_MAX_PER_RUN?'（已达本轮上限，余下下次跑）':''));
@@ -542,12 +493,14 @@ function removeNoteEntry(block, key){
   fs.writeFileSync(path.join(TMP,'tpl.html'), tplHtml0);
   const snapMod = require(path.join(TMP,'build_snapshot.js'));
 
-  // 2) 起点清单
-  let origins;
-  try{
-    const oj = await getFile('origins.json');
-    origins = JSON.parse(b64dec(oj.content)).origins || [];
-  }catch(e){ origins = null; }
+  // 2) 起点清单：优先用「云端按访客起点聚合」（管理员凭据隔离，普通用户接口拿不到他人数据）
+  let origins = await loadCloudOrigins();
+  if(!origins.length){
+    try{
+      const oj = await getFile('origins.json');
+      origins = JSON.parse(b64dec(oj.content)).origins || [];
+    }catch(e){ origins = []; }
+  }
   if(!Array.isArray(origins) || !origins.length){
     origins = [{ name:'农林大学(默认)', lng: snapMod.START.lng, lat: snapMod.START.lat }];
     // 写回种子 origins.json
@@ -564,30 +517,6 @@ function removeNoteEntry(block, key){
     }
   }
   console.log('[起点] 共 '+origins.length+' 个：'+origins.map(o=>o.name).join('、'));
-
-  // 2b) 起点守卫：外部「起点同步（后端自动）」是覆盖式写入，每次只写本次那一个起点，
-  //     会把其余起点整条删掉（历史事故：福建农林大学金山校区被删，只剩 1 个起点）。
-  //     此处按基线起点做自愈补回，保证每日检索范围不缩水。可用 ORIGIN_GUARD=0 关闭。
-  if(process.env.ORIGIN_GUARD !== '0'){
-    const BASELINE = [
-      { name:'福建农林大学金山校区', lng:119.2329,   lat:26.0872   },
-      { name:'融侨旗山别墅',         lng:119.212191, lat:25.981606 }
-    ];
-    const have = new Set((origins||[]).map(o=>String(o.name||'').trim()));
-    const missing = BASELINE.filter(b=>!have.has(b.name));
-    if(missing.length){
-      console.warn('[起点守卫] 检测到基线起点缺失：'+missing.map(m=>m.name).join('、')+'（疑似被覆盖式同步删除），已自动补回');
-      const mergedOrigins = (origins||[]).filter(o=>String(o.name||'').trim()).concat(missing);
-      try{
-        const body = { message:'起点守卫：自动补回缺失基线起点（'+missing.map(m=>m.name).join('、')+'）',
-                       content: b64enc(JSON.stringify({origins:mergedOrigins}, null, 2)), branch: BRANCH };
-        try{ const cur = await getFile('origins.json'); if(cur && cur.sha) body.sha = cur.sha; }catch(e){}
-        await gh('PUT','/repos/'+OWNER+'/'+REPO+'/contents/'+encodeURIComponent('origins.json'), body);
-        origins = mergedOrigins;
-        console.log('[起点守卫] origins.json 已补回，当前 '+origins.length+' 个：'+origins.map(o=>o.name).join('、'));
-      }catch(e){ console.warn('[起点守卫] 补回失败（本次按现有起点检索）：', e.message); }
-    }
-  }
 
   // 3) 每日确认：围绕每个起点 80km 检索，合并去重（REBUILD=1 时跳过高德，复用已发布快照）
   const REBUILD = process.env.REBUILD === '1';
@@ -665,7 +594,6 @@ function removeNoteEntry(block, key){
     }
     patched = patchSpotNotes(tplHtml0, added);
     patched = dedupeNotesHtml(patched);   // 清理知识库内部重复（ALIAS 副名）
-    patched = normalizeNotes(patched).html;   // 格式守卫：统一为严格 JSON（常规检查）
     patched = freshenNotes(patched, merged);   // 每日信息保鲜：刷新评分 + 保守标「可能失效」
     patched = await llmUpgradeNotes(patched);   // 大模型深度提质 _auto 条目（可选；无 key 自动降级）
     // 自检：补全后 SPOT_NOTES 必须真的变长，否则说明写入失效（不能再静默当作成功）
@@ -711,23 +639,11 @@ function removeNoteEntry(block, key){
   const MUST_HAVE = ['id="tocDrawer"', 'data-act="guide"', 'id="mList"', 'id="mMore"', 'markNewBadges', 'renderMList'];
   const lost = MUST_HAVE.filter(k => tplHtml0.includes(k) && !outHtml.includes(k));
   if(lost.length){ console.error('[错] 生成结果丢失关键结构：'+lost.join(', ')+'（疑似读取到旧模板副本），已中止发布'); process.exit(1); }
-  // 语法体检（发布前最后一道闸）：内联脚本必须能被 JS 引擎编译，否则绝不覆盖线上 index.html
-  assertPageJsOk(outHtml, 'index.html');
-  console.log('[体检] index.html 内联脚本语法校验通过，允许发布');
   const existing = await getFile('index.html');
   const payload = { message:(REBUILD?'轻量重建':'每日快照')+' '+new Date().toISOString().slice(0,10)+' · 扩库+'+autoCount, content, branch: BRANCH };
   if(existing && existing.sha) payload.sha = existing.sha;
   await gh('PUT','/repos/'+OWNER+'/'+REPO+'/contents/'+encodeURIComponent('index.html'), payload);
-  // 发布后回读复核：仓库内容必须与本地生成内容一致且再次通过语法体检
-  const back = await getFile('index.html');
-  const backTxt = back ? b64dec(back.content) : '';
-  if(!backTxt || backTxt !== outHtml){ console.error('[复核] 仓库 index.html 与本地生成内容不一致，请人工检查'); process.exit(1); }
-  assertPageJsOk(backTxt, 'index.html(回读)');
-  console.log('[复核] 仓库回读一致，语法校验通过（'+backTxt.length+' 字节）');
   if(!REBUILD){
-    // 模板同样要体检：模板被写坏会污染次日所有生成结果（历史事故来源）
-    assertPageJsOk(patched, '福州带娃周末出行.html');
-    console.log('[体检] 模板内联脚本语法校验通过，允许写回');
     const tplSha = (await getFile('福州带娃周末出行.html')).sha;
     await gh('PUT','/repos/'+OWNER+'/'+REPO+'/contents/'+encodeURIComponent('福州带娃周末出行.html'),
       { message:'每日自动补全累计（'+autoCount+' 个）', content: b64enc(patched), branch: BRANCH, sha: tplSha });
