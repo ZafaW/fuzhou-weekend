@@ -276,11 +276,11 @@ async function freshenNotes(html, merged){
       const rating=(hit.biz_ext&&hit.biz_ext.rating)||'';
       const nv=Object.assign({},val,{_rating_now:rating});
       delete nv._gone; delete nv._gone_date;
-      if(JSON.stringify(nv)!==JSON.stringify(val)){ lines[r]='  '+JSON.stringify(name)+': '+JSON.stringify(nv); changed++; }
+      if(JSON.stringify(nv)!==JSON.stringify(val)){ lines[r]='  '+JSON.stringify(name)+': '+JSON.stringify(nv)+','; changed++; }
       refreshed++;
     }else if(val._rating_now){
       const nv=Object.assign({},val,{_gone:true,_gone_date:todayISO()});
-      if(JSON.stringify(nv)!==JSON.stringify(val)){ lines[r]='  '+JSON.stringify(name)+': '+JSON.stringify(nv); changed++; gone++; }
+      if(JSON.stringify(nv)!==JSON.stringify(val)){ lines[r]='  '+JSON.stringify(name)+': '+JSON.stringify(nv)+','; changed++; gone++; }
     }
   }
   if(!changed){ console.log('[保鲜] 无结构化字段变化'); return html; }
@@ -316,7 +316,7 @@ async function llmUpgradeNotes(html){
     const out=await llmUpgradeOne(t.name, kind, t.val._addr, t.val._rating);
     if(!out){ fail++; continue; }
     const newVal=Object.assign({}, t.val, {u:out.u, warn:out.warn, food:out.food, _auto:true, _llm:true, _llm_date:todayISO()});
-    lines[t.r]='  '+JSON.stringify(t.name)+': '+JSON.stringify(newVal);
+    lines[t.r]='  '+JSON.stringify(t.name)+': '+JSON.stringify(newVal)+',';
     ok++;
   }
   console.log('[LLM] 深度提质完成：成功 '+ok+' / 失败(降级保留原攻略) '+fail+(ok+fail>=LLM_MAX_PER_RUN?'（已达本轮上限，余下下次跑）':''));
