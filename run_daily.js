@@ -10,7 +10,7 @@
 //   4) node build_snapshot.js 生成自包含 今日.html（内嵌当天高德 POI）
 //   5) 把 今日.html / 模板 / origins.json 写回仓库（index.html 经 GitHub Pages 渲染）
 // 用法：GITHUB_TOKEN=xxx OWNER=xxx REPO=xxx [ADMIN_PIN=xxx] [BACKEND_URL=...] [SHARECODE=...] node run_daily.js
-// 依赖环境变量：GITHUB_TOKEN、OWNER、REPO（必填）；ADMIN_PIN（选填，设了才聚合云端访客起点用于扩库）
+// 依赖环境变量：GITHUB_TOKEN、OWNER、REPO（必填）；ADMIN_PIN（选填，默认已内置，用于聚合云端访客起点扩库；可用环境变量覆盖）
 
 const https = require('https');
 const fs = require('fs');
@@ -23,7 +23,7 @@ const REPO = process.env.REPO;
 const BRANCH = process.env.BRANCH || 'main';
 const BACKEND_URL = process.env.BACKEND_URL || 'https://a422398a5c853b9a6.app.workbuddy.host';
 const SHARECODE = process.env.SHARECODE || 'AOKZ35Y2P7';
-const ADMIN_PIN = process.env.ADMIN_PIN || '';   // 可选：设了才从后端聚合全部访客起点用于扩库
+const ADMIN_PIN = process.env.ADMIN_PIN || 'fZa9qR2tK7';   // 默认内置：每日任务自动从后端聚合全部访客起点用于扩库；可用环境变量覆盖
 const TMP = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fz-'));
 if(!TOKEN || !OWNER || !REPO){ console.error('[错] 缺少环境变量 GITHUB_TOKEN / OWNER / REPO'); process.exit(1); }
 
