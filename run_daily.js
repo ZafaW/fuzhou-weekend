@@ -214,7 +214,18 @@ function setNoteLine(lines, r, name, val){
   const hadComma = /,\s*$/.test(lines[r]);
   lines[r] = '  '+JSON.stringify(name)+': '+JSON.stringify(val)+(hadComma?',':'');
 }
-/* SPOT_NOTES 自检：条目数不变 + 每个条目值作为 JS 表达式可编译（兼容 {u:'...'} 这类非严格 JSON 的历史写法） */
+/* 求值 SPOT_NOTES 条目值：历史条目既有严格 JSON，也有 {u:'...'} 这类 JS 字面量，
+   统一用 V8 在空上下文求值，使两类条目都能参与保鲜（JSON.parse 会漏掉后者）。 */
+function evalJsObj(src){
+  const vm=require('vm');
+  return new vm.Script('('+src+')').runInNewContext(Object.create(null));
+}
+function countNoteEntries(block){
+  const entryRe=/^\s*('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")\s*:\s*(\{.*\})\s*,?\s*$/;
+  return block.split('\n').filter(l=>entryRe.test(l)).length;
+}
+/* SPOT_NOTES 自检：条目数不变 + 每个条目值作为 JS 表达式可编译
+   （兼容 {u:'...'} 这类非严格 JSON 的历史写法） */
 function assertNotesBlockOk(block, expectCount, label){
   const vm=require('vm');
   const entryRe=/^\s*('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")\s*:\s*(\{.*\})\s*,?\s*$/;
@@ -222,9 +233,10 @@ function assertNotesBlockOk(block, expectCount, label){
   for(const line of block.split('\n')){
     const mm=line.match(entryRe); if(!mm) continue;
     n++;
-    try{ new vm.Script('('+mm[2]+')'); }catch(e){ bad++; }
+    try{ new vm.Script('('+mm[2]+')'); }
+    catch(e){ bad++; if(bad<=3) console.warn('[自检] 条目值不可编译，跳过：'+mm[1].slice(0,24)+'… '+e.message); }
   }
-  if(bad>0) throw new Error(label+' 自检失败：'+bad+' 条条目值不是合法 JSON');
+  if(bad>0) throw new Error(label+' 自检失败：'+bad+' 条条目值无法作为 JS 表达式编译');
   if(expectCount!=null && n!==expectCount) throw new Error(label+' 自检失败：条目数 '+n+' ≠ 预期 '+expectCount);
   return n;
 }
@@ -255,10 +267,11 @@ async function freshenNotes(html, merged){
     if(!byName.has(key)) byName.set(key, p);
   }
   const rows=[];
+  const beforeCount = countNoteEntries(block);   // 自检基线：改动前的条目总数
   for(let r=0;r<lines.length;r++){
     const mm=lines[r].match(entryRe); if(!mm) continue;
     const name=mm[1].slice(1,-1).replace(/\\'/g,"'").replace(/\\"/g,'"');
-    let val; try{ val=JSON.parse(mm[2]); }catch(e){ continue; }
+    let val; try{ val=evalJsObj(mm[2]); }catch(e){ continue; }
     rows.push({r,name,val});
   }
   let refreshed=0, gone=0, changed=0;
@@ -279,7 +292,7 @@ async function freshenNotes(html, merged){
   if(!changed){ console.log('[保鲜] 无结构化字段变化'); return html; }
   console.log('[保鲜] 刷新 '+refreshed+' 个地点最新评分；'+gone+' 个今日未检索到已标「可能失效」；共 '+changed+' 条更新');
   const newBlock = lines.join('\n');
-  assertNotesBlockOk(newBlock, rows.length, '保鲜后 SPOT_NOTES');   // 逗号/JSON 兜底自检
+  assertNotesBlockOk(newBlock, beforeCount, '保鲜后 SPOT_NOTES');   // 逗号/JSON 兜底自检
   return html.replace(block, newBlock);
 }
 
