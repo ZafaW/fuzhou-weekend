@@ -634,12 +634,21 @@ function removeNoteEntry(block, key){
   if(lost.length){ console.error('[错] 生成结果丢失关键结构：'+lost.join(', ')+'（疑似读取到旧模板副本），已中止发布'); process.exit(1); }
   // 语法体检（发布前最后一道闸）：内联脚本必须能被 JS 引擎编译，否则绝不覆盖线上 index.html
   assertPageJsOk(outHtml, 'index.html');
-  console.log('[体检] 内联脚本语法校验通过，允许发布');
+  console.log('[体检] index.html 内联脚本语法校验通过，允许发布');
   const existing = await getFile('index.html');
   const payload = { message:(REBUILD?'轻量重建':'每日快照')+' '+new Date().toISOString().slice(0,10)+' · 扩库+'+autoCount, content, branch: BRANCH };
   if(existing && existing.sha) payload.sha = existing.sha;
   await gh('PUT','/repos/'+OWNER+'/'+REPO+'/contents/'+encodeURIComponent('index.html'), payload);
+  // 发布后回读复核：仓库内容必须与本地生成内容一致且再次通过语法体检
+  const back = await getFile('index.html');
+  const backTxt = back ? b64dec(back.content) : '';
+  if(!backTxt || backTxt !== outHtml){ console.error('[复核] 仓库 index.html 与本地生成内容不一致，请人工检查'); process.exit(1); }
+  assertPageJsOk(backTxt, 'index.html(回读)');
+  console.log('[复核] 仓库回读一致，语法校验通过（'+backTxt.length+' 字节）');
   if(!REBUILD){
+    // 模板同样要体检：模板被写坏会污染次日所有生成结果（历史事故来源）
+    assertPageJsOk(patched, '福州带娃周末出行.html');
+    console.log('[体检] 模板内联脚本语法校验通过，允许写回');
     const tplSha = (await getFile('福州带娃周末出行.html')).sha;
     await gh('PUT','/repos/'+OWNER+'/'+REPO+'/contents/'+encodeURIComponent('福州带娃周末出行.html'),
       { message:'每日自动补全累计（'+autoCount+' 个）', content: b64enc(patched), branch: BRANCH, sha: tplSha });
