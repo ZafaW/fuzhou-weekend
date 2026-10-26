@@ -21,8 +21,8 @@ const TOKEN = process.env.GITHUB_TOKEN;
 const OWNER = process.env.OWNER;
 const REPO = process.env.REPO;
 const BRANCH = process.env.BRANCH || 'main';
-const BACKEND_URL = process.env.BACKEND_URL || 'https://a96a9f9fb53eefdca.app.workbuddy.host';
-const SHARECODE = process.env.SHARECODE || 'NE43RUUQXT';
+const BACKEND_URL = process.env.BACKEND_URL || 'https://a422398a5c853b9a6.app.workbuddy.host';
+const SHARECODE = process.env.SHARECODE || 'AOKZ35Y2P7';
 const ADMIN_PIN = process.env.ADMIN_PIN || '';   // 可选：设了才从后端聚合全部访客起点用于扩库
 const TMP = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fz-'));
 if(!TOKEN || !OWNER || !REPO){ console.error('[错] 缺少环境变量 GITHUB_TOKEN / OWNER / REPO'); process.exit(1); }
