@@ -137,7 +137,19 @@ const server=http.createServer(async(req,res)=>{
     });
     res.end(); return;
   }
+  // 令牌来源优先级：① 环境变量 GH_TOKEN/GITHUB_TOKEN ② 项目目录 github_token.txt ③ /root/.config/fz/gh.json
+  // 原因：重新部署（发布为应用）只会打包项目目录，/root/.config 下的文件不会跟着走，
+  //      仅依赖 ③ 会导致新实例起来后所有 GitHub 操作报「服务端未配置令牌」。
   function ghConf(){
+    const owner = (process.env.GH_OWNER ||'ZafaW').trim();
+    const repo  = (process.env.GH_REPO  ||'fuzhou-weekend').trim();
+    const branch= (process.env.GH_BRANCH||'main').trim();
+    const envTok= ((process.env.GH_TOKEN||'')||(process.env.GITHUB_TOKEN||'')||(process.env.FZ_GH_TOKEN||'')).trim();
+    if(envTok) return { token:envTok, owner, repo, branch };
+    try{
+      const t=fs.readFileSync(path.join(process.cwd(),'github_token.txt'),'utf8').trim();
+      if(t) return { token:t, owner, repo, branch };
+    }catch(e){}
     try{
       const c=JSON.parse(fs.readFileSync('/root/.config/fz/gh.json','utf8'));
       if(c.token && c.owner && c.repo) return c;
